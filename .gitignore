@@ -12,10 +12,6 @@ venv/
 .venv/
 env/
 
-# --- Runtime data (per-user, not source code) ---
-app_config.json
-execution_log.json
-
 # --- OS / Editor ---
 .DS_Store
 Thumbs.db
