@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DuckX Newsfeed</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+    <div class="app">
+        <header class="header">
+            <div class="header-left">
+                <span class="logo">🦆</span>
+                <h1>DuckX Newsfeed</h1>
+            </div>
+            <button class="btn btn-primary" onclick="runAll()">▶ Run All Now</button>
+        </header>
+
+        <nav class="tabs">
+            <button id="tab-btn-dashboard" class="tab active" onclick="switchTab('dashboard', this)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="3" width="7" height="7"></rect>
+                    <rect x="14" y="14" width="7" height="7"></rect>
+                    <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                Dashboard
+            </button>
+            <button id="tab-btn-settings" class="tab" onclick="switchTab('settings', this)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                </svg>
+                Settings
+            </button>
+            <button id="tab-btn-execlog" class="tab" onclick="switchTab('execlog', this)">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Execution Log
+            </button>
+        </nav>
+
+        <main class="content">
+            <!-- ════ DASHBOARD ════ -->
+            <div id="tab-dashboard" class="tab-panel active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-label">Watchlists</div>
+                        <div class="stat-value" id="stat-wl">0</div>
+                        <div class="stat-sub"><span id="stat-accounts">0</span> accounts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Fetches</div>
+                        <div class="stat-value" id="stat-fetches">0</div>
+                    </div>
+                    <div class="stat-card stat-card-success">
+                        <div class="stat-label">Success Rate</div>
+                        <div class="stat-value" id="stat-rate">0%</div>
+                        <div class="stat-sub"><span id="stat-success">0</span> success / <span id="stat-errors">0</span>
+                            errors</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Last Run</div>
+                        <div class="stat-value stat-value-sm" id="stat-last">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Next Run</div>
+                        <div class="stat-value stat-value-sm" id="stat-next">--</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Active Jobs</div>
+                        <div class="stat-value" id="stat-jobs">0</div>
+                        <div class="stat-sub">scheduled</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════ SETTINGS ════ -->
+            <div id="tab-settings" class="tab-panel">
+                <div class="section-header">
+                    <h2>Watchlists</h2>
+                    <button class="btn btn-primary btn-sm" onclick="showCreateWatchlist()">+ New Watchlist</button>
+                </div>
+
+                <!-- Create Watchlist Form -->
+                <div id="create-wl-form" class="add-form" style="display:none">
+                    <input type="text" id="new-wl-name" placeholder="Watchlist name (e.g. Crypto News)"
+                        onkeypress="if(event.key==='Enter') createWatchlist()">
+                    <button class="btn btn-primary" onclick="createWatchlist()">Create</button>
+                    <button class="btn btn-secondary" onclick="hideCreateWatchlist()">Cancel</button>
+                </div>
+
+                <div id="watchlists-container" class="watchlists-container">
+                    <p class="empty-msg">No watchlists yet. Create one above.</p>
+                </div>
+
+                <!-- Telegram Test -->
+                <div class="settings-section" style="margin-top:1.5rem">
+                    <h3>Telegram</h3>
+                    <button class="btn btn-secondary" onclick="testTelegram()">Test Connection</button>
+                    <span id="tg-result" class="info-sub" style="margin-left:0.75rem"></span>
+                </div>
+            </div>
+
+            <!-- ════ EXECUTION LOG ════ -->
+            <div id="tab-execlog" class="tab-panel">
+                <div class="section-header">
+                    <h2>Execution Log</h2>
+                    <div style="display:flex; gap:0.5rem">
+                        <button class="btn btn-sm btn-danger" onclick="deleteSelectedLogs()">🗑️ Delete
+                            Selected</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAllLogs()">🗑️ Delete All</button>
+                        <button class="btn btn-sm btn-secondary" onclick="resetLastPost()"
+                            title="Xoá lịch sử truy xuất các tweets"> Clear Timeline History</button>
+                    </div>
+                </div>
+                <div id="execlog-container" class="list-container">
+                    <p class="empty-msg">No executions yet</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- Rename Modal -->
+        <div id="rename-modal" class="modal-backdrop" style="display:none" onclick="closeRenameModal(event)">
+            <div class="modal-box">
+                <h3>Rename Watchlist</h3>
+                <input type="text" id="rename-input" placeholder="New name"
+                    onkeypress="if(event.key==='Enter') submitRename()">
+                <div class="modal-actions">
+                    <button class="btn btn-primary" onclick="submitRename()">Save</button>
+                    <button class="btn btn-secondary" onclick="closeRenameModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Modal -->
+        <div id="detail-modal" class="modal-backdrop" style="display:none" onclick="closeDetailModal(event)">
+            <div class="modal-box modal-box-lg">
+                <div class="modal-header">
+                    <h3 id="detail-title" style="margin-bottom:0; flex:1">Execution Detail</h3>
+                    <div style="display:flex; gap:0.4rem; align-items:center;">
+                        <button class="btn btn-sm btn-secondary" onclick="closeDetailModal()">✕</button>
+                    </div>
+                </div>
+                <div id="detail-body" class="detail-body"></div>
+            </div>
+        </div>
+
+        <div id="toast" class="toast"></div>
+    </div>
+
+    <script>
+        // ─── State ───
+        let aiModels = [];
+        let renamingWlId = null;
+
+        // ─── Tabs ───
+        function switchTab(name, btn) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            if (btn) btn.classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+            if (name === 'dashboard') loadDashboard();
+            else if (name === 'settings') loadSettings();
+            else if (name === 'execlog') loadExecLog();
+        }
+
+        // ─── Toast ───
+        function showToast(msg, type = 'info') {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.className = 'toast show ' + type;
+            setTimeout(() => t.className = 'toast', 3000);
+        }
+
+        // ─── API ───
+        async function api(path, method = 'GET', body = null) {
+            try {
+                const opts = { method, headers: { 'Content-Type': 'application/json' } };
+                if (body) opts.body = JSON.stringify(body);
+                const res = await fetch(path, opts);
+                return res.json();
+            } catch (err) {
+                showToast('Network error: ' + err.message, 'error');
+                return {};
+            }
+        }
+
+        // ─── Dashboard ───
+        async function loadDashboard() {
+            const stats = await api('/api/stats');
+            document.getElementById('stat-wl').textContent = stats.watchlist_count || 0;
+            document.getElementById('stat-accounts').textContent = stats.total_accounts || 0;
+            document.getElementById('stat-fetches').textContent = stats.total_fetches || 0;
+            document.getElementById('stat-rate').textContent = (stats.success_rate || 0) + '%';
+            document.getElementById('stat-success').textContent = stats.success_count || 0;
+            document.getElementById('stat-errors').textContent = stats.error_count || 0;
+            document.getElementById('stat-last').textContent = stats.last_run || '--';
+            document.getElementById('stat-next').textContent = stats.next_run || '--';
+            document.getElementById('stat-jobs').textContent = stats.active_jobs || 0;
+        }
+
+        // ─── Settings / Watchlists ───
+        function showCreateWatchlist() {
+            document.getElementById('create-wl-form').style.display = 'flex';
+            setTimeout(() => document.getElementById('new-wl-name').focus(), 50);
+        }
+        function hideCreateWatchlist() {
+            document.getElementById('create-wl-form').style.display = 'none';
+            document.getElementById('new-wl-name').value = '';
+        }
+
+        async function createWatchlist() {
+            const input = document.getElementById('new-wl-name');
+            const name = input.value.trim();
+            if (!name) { showToast('Please enter a name', 'error'); return; }
+            const data = await api('/api/watchlists', 'POST', { name });
+            if (data.success) {
+                showToast('Watchlist "' + name + '" created', 'success');
+                hideCreateWatchlist();
+                loadSettings();
+            } else {
+                showToast(data.message || 'Failed to create watchlist', 'error');
+            }
+        }
+
+        async function loadSettings() {
+            if (!aiModels.length) {
+                const m = await api('/api/ai-models');
+                aiModels = m.models || [];
+            }
+            const data = await api('/api/watchlists');
+            const wls = data.watchlists || [];
+            const container = document.getElementById('watchlists-container');
+
+            if (!wls.length) {
+                container.innerHTML = '<p class="empty-msg">No watchlists yet. Create one above.</p>';
+                return;
+            }
+            container.innerHTML = wls.map(wl => renderWatchlistCard(wl)).join('');
+        }
+
+        function renderWatchlistCard(wl) {
+            const modelOptions = aiModels.map(m =>
+                `<option value="${m.id}" ${m.id === wl.ai_model ? 'selected' : ''} ${!m.configured ? 'disabled' : ''}>${m.label}${m.configured ? '' : ' (no key)'}</option>`
+            ).join('');
+
+            const accounts = (wl.accounts || []).map(a =>
+                `<span class="tag">@${a} <button class="tag-remove" onclick="removeAccount('${wl.id}','${a}')">&times;</button></span>`
+            ).join('');
+
+            const times = (wl.schedule_times || []).map(t =>
+                `<span class="tag time-tag">${t} <button class="tag-remove" onclick="removeTime('${wl.id}','${t}')">&times;</button></span>`
+            ).join('');
+
+            return `
+    <div class="wl-card ${wl.enabled ? '' : 'disabled'}">
+        <div class="wl-card-header">
+            <div class="wl-card-title">
+                <strong>${wl.name}</strong>
+                <span class="wl-card-count">${wl.accounts.length} accounts</span>
+            </div>
+            <div class="wl-card-actions">
+                <button class="btn btn-sm btn-secondary" onclick="openRenameModal('${wl.id}','${wl.name.replace(/'/g, "\\'")}')">✏️ Rename</button>
+                <button class="btn btn-sm btn-primary" onclick="runWatchlist('${wl.id}')">▶ Run</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteWatchlist('${wl.id}')">Delete</button>
+            </div>
+        </div>
+
+        <div class="wl-card-body">
+            <!-- Accounts -->
+            <div class="wl-section">
+                <label>Accounts</label>
+                <div class="tags-row">${accounts || '<span class="empty-inline">No accounts</span>'}</div>
+                <div class="inline-add">
+                    <input type="text" id="acc-${wl.id}" placeholder="username"
+                        onkeypress="if(event.key==='Enter') addAccount('${wl.id}')">
+                    <button class="btn btn-sm btn-secondary" onclick="addAccount('${wl.id}')">+</button>
+                </div>
+            </div>
+
+            <!-- Schedule -->
+            <div class="wl-section">
+                <label>Schedule (UTC+7)</label>
+                <div class="tags-row">${times || '<span class="empty-inline">No times set</span>'}</div>
+                <div class="inline-add">
+                    <input type="time" id="time-${wl.id}">
+                    <button class="btn btn-sm btn-secondary" onclick="addTime('${wl.id}')">+</button>
+                </div>
+            </div>
+
+            <!-- AI Model -->
+            <div class="wl-section">
+                <label>AI Model</label>
+                <select onchange="updateWatchlist('${wl.id}', {ai_model: this.value})">
+                    ${modelOptions}
+                </select>
+            </div>
+
+            <!-- Max tweets per account -->
+            <div class="wl-section">
+                <label>Max tweets per account</label>
+                <div class="inline-add">
+                    <input type="number" id="maxposts-${wl.id}" value="${wl.max_posts_per_user || 10}" min="1" max="100" style="width:80px">
+                    <button class="btn btn-sm btn-secondary" onclick="saveMaxPosts('${wl.id}')">Save</button>
+                </div>
+                <div class="field-hint">Số tweets tối đa lấy từ mỗi account (1–100, mặc định 10)</div>
+            </div>
+
+            <!-- Prompt -->
+            <div class="wl-section">
+                <label>Prompt</label>
+                <textarea id="prompt-${wl.id}" rows="3">${wl.prompt || ''}</textarea>
+                <button class="btn btn-sm btn-secondary" onclick="savePrompt('${wl.id}')" style="margin-top:0.5rem">Save Prompt</button>
+            </div>
+        </div>
+    </div>`;
+        }
+
+        async function deleteWatchlist(id) {
+            if (!confirm('Delete this watchlist?')) return;
+            const data = await api('/api/watchlists/' + id, 'DELETE');
+            showToast(data.message, data.success ? 'success' : 'error');
+            loadSettings();
+        }
+
+        // ─── Rename Modal ───
+        function openRenameModal(wlId, currentName) {
+            renamingWlId = wlId;
+            document.getElementById('rename-input').value = currentName;
+            document.getElementById('rename-modal').style.display = 'flex';
+            setTimeout(() => document.getElementById('rename-input').focus(), 50);
+        }
+
+        function closeRenameModal(ev) {
+            if (ev && ev.target !== document.getElementById('rename-modal')) return;
+            document.getElementById('rename-modal').style.display = 'none';
+            renamingWlId = null;
+        }
+
+        async function submitRename() {
+            const name = document.getElementById('rename-input').value.trim();
+            if (!name) { showToast('Name cannot be empty', 'error'); return; }
+            if (!renamingWlId) return;
+            const data = await api('/api/watchlists/' + renamingWlId, 'PUT', { name });
+            if (data.success) {
+                showToast('Renamed successfully', 'success');
+                document.getElementById('rename-modal').style.display = 'none';
+                renamingWlId = null;
+                loadSettings();
+            } else {
+                showToast(data.message || 'Rename failed', 'error');
+            }
+        }
+
+        async function addAccount(wlId) {
+            const input = document.getElementById('acc-' + wlId);
+            const username = input.value.trim().replace('@', '');
+            if (!username) return;
+            const data = await api(`/api/watchlists/${wlId}/accounts`, 'POST', { username });
+            showToast(data.message, data.success ? 'success' : 'error');
+            if (data.success) { input.value = ''; loadSettings(); }
+        }
+
+        async function removeAccount(wlId, username) {
+            await api(`/api/watchlists/${wlId}/accounts/${username}`, 'DELETE');
+            loadSettings();
+        }
+
+        async function addTime(wlId) {
+            const input = document.getElementById('time-' + wlId);
+            const time = input.value;
+            if (!time) { showToast('Please select a time', 'error'); return; }
+            const res = await api('/api/watchlists');
+            const wl = (res.watchlists || []).find(w => w.id === wlId);
+            if (!wl) return;
+            const times = wl.schedule_times || [];
+            if (times.includes(time)) { showToast('Time already exists', 'error'); return; }
+            times.push(time);
+            times.sort();
+            await updateWatchlist(wlId, { schedule_times: times });
+        }
+
+        async function removeTime(wlId, time) {
+            const res = await api('/api/watchlists');
+            const wl = (res.watchlists || []).find(w => w.id === wlId);
+            if (!wl) return;
+            const times = (wl.schedule_times || []).filter(t => t !== time);
+            await updateWatchlist(wlId, { schedule_times: times });
+        }
+
+        async function updateWatchlist(wlId, updates) {
+            const data = await api('/api/watchlists/' + wlId, 'PUT', updates);
+            if (data.success) loadSettings();
+            return data;
+        }
+
+        async function savePrompt(wlId) {
+            const prompt = document.getElementById('prompt-' + wlId).value;
+            await updateWatchlist(wlId, { prompt });
+            showToast('Prompt saved', 'success');
+        }
+
+        async function saveMaxPosts(wlId) {
+            const input = document.getElementById('maxposts-' + wlId);
+            let val = parseInt(input.value, 10);
+            if (isNaN(val) || val < 1) { val = 1; input.value = 1; }
+            if (val > 100) { val = 100; input.value = 100; }
+            await updateWatchlist(wlId, { max_posts_per_user: val });
+            showToast(`Max posts set to ${val}`, 'success');
+        }
+
+        // ─── Execution Log ───
+        function statusBadge(status) {
+            const icons = { success: '✅', error: '❌', skipped: '⏭️' };
+            const cls = { success: 'badge-ok', error: 'badge-err', skipped: 'badge-skip' };
+            return `<span class="status-badge ${cls[status] || 'badge-skip'}">${icons[status] || '⏭️'}</span>`;
+        }
+
+        async function loadExecLog() {
+            const data = await api('/api/execution-log');
+            const log = data.log || [];
+            const container = document.getElementById('execlog-container');
+
+            if (!log.length) {
+                container.innerHTML = '<p class="empty-msg">No executions yet. Run a watchlist to see results here.</p>';
+                return;
+            }
+
+            container.innerHTML = log.slice(0, 50).map((e, i) => {
+                const steps = e.steps || {};
+                const f = steps.fetch || {};
+                const a = steps.ai || {};
+                const t = steps.telegram || {};
+                const allOk = f.status === 'success' && a.status === 'success' && t.status === 'success';
+
+                return `
+        <div class="exec-entry ${allOk ? '' : 'exec-entry-warn'}" onclick="showExecDetail(${i})">
+            <div class="exec-row">
+                <input type="checkbox" class="exec-checkbox" value="${i}" onclick="event.stopPropagation()">
+                <span class="exec-time">${e.time}</span>
+                <span class="exec-wl">${e.watchlist_name}</span>
+                <span class="exec-tweets">${f.tweet_count || 0} tweets</span>
+                <div class="exec-badges">
+                    <span class="exec-step" title="Fetch ${f.status}">${statusBadge(f.status)} Fetch</span>
+                    <span class="exec-step" title="AI ${a.status}">${statusBadge(a.status)} AI</span>
+                    <span class="exec-step" title="Telegram ${t.status}">${statusBadge(t.status)} TG</span>
+                </div>
+            </div>
+        </div>`;
+            }).join('');
+
+            // Store for detail view
+            window._execLog = log;
+        }
+
+        function showExecDetail(idx) {
+            window._currentExecIdx = idx;
+            const e = window._execLog[idx];
+            if (!e) return;
+            const steps = e.steps || {};
+            const f = steps.fetch || {};
+            const a = steps.ai || {};
+            const t = steps.telegram || {};
+
+            document.getElementById('detail-title').textContent =
+                `${e.watchlist_name} — ${e.time}`;
+
+            document.getElementById('detail-body').innerHTML = `
+        <div class="detail-section">
+            <h4>${statusBadge(f.status)} Fetch</h4>
+            <div class="detail-meta">Tweets: ${f.tweet_count || 0}</div>
+            ${f.detail ? `<div class="detail-info">${esc(f.detail)}</div>` : ''}
+        </div>
+        <div class="detail-section">
+            <h4>${statusBadge(a.status)} AI Summarization</h4>
+            <div class="detail-meta">Model: ${a.model || 'N/A'}</div>
+            ${a.detail ? `<div class="detail-info">${esc(a.detail)}</div>` : ''}
+        </div>
+        <div class="detail-section">
+            <h4>${statusBadge(t.status)} Telegram</h4>
+            ${t.detail ? `<div class="detail-info">${esc(t.detail)}</div>` : ''}
+        </div>
+        ${e.raw_tweets ? `
+        <details class="detail-expand">
+            <summary>
+                📄 Raw Tweets
+                <button class="btn btn-sm btn-secondary copy-btn" onclick="event.stopPropagation();copySection('detail-raw')">📋 Copy</button>
+            </summary>
+            <pre class="detail-pre" id="detail-raw">${esc(e.raw_tweets)}</pre>
+        </details>` : ''}
+        ${e.ai_summary ? `
+        <details class="detail-expand">
+            <summary>
+                🤖 AI Summary
+                <button class="btn btn-sm btn-secondary copy-btn" onclick="event.stopPropagation();copySection('detail-ai')">📋 Copy</button>
+            </summary>
+            <pre class="detail-pre" id="detail-ai">${esc(e.ai_summary)}</pre>
+        </details>` : ''}
+        `;
+
+            document.getElementById('detail-modal').style.display = 'flex';
+        }
+
+        function closeDetailModal(ev) {
+            if (ev && ev.target !== document.getElementById('detail-modal')) return;
+            document.getElementById('detail-modal').style.display = 'none';
+        }
+
+        function esc(str) {
+            const d = document.createElement('div');
+            d.textContent = str || '';
+            return d.innerHTML;
+        }
+
+        function copySection(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            navigator.clipboard.writeText(el.textContent).then(() => {
+                showToast('Đã copy vào clipboard ✓', 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                const ta = document.createElement('textarea');
+                ta.value = el.textContent;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast('Đã copy vào clipboard ✓', 'success');
+            });
+        }
+
+        // ─── Actions ───
+        async function runWatchlist(wlId) {
+            showToast('Running...', 'info');
+            await api('/api/run-now', 'POST', { wl_id: wlId });
+            setTimeout(loadDashboard, 5000);
+        }
+
+        async function runAll() {
+            showToast('Running all watchlists...', 'info');
+            await api('/api/run-now', 'POST');
+            setTimeout(loadDashboard, 8000);
+        }
+
+        async function testTelegram() {
+            document.getElementById('tg-result').textContent = 'Testing...';
+            const data = await api('/api/test-telegram', 'POST');
+            const msg = data.success ? 'OK: @' + data.bot_name : 'Error: ' + data.message;
+            document.getElementById('tg-result').textContent = msg;
+            showToast(msg, data.success ? 'success' : 'error');
+        }
+
+        async function resetLastPost() {
+            if (!confirm("Hành động này sẽ xóa lịch sử truy xuất các tweets của TẤT CẢ Watchlists.\nLần chạy tới App sẽ truy xuất toàn bộ các tweets lại từ đầu.\nBạn có chắc chắn muốn XOÁ?")) return;
+            showToast('Đang reset...', 'info');
+            const data = await api('/api/reset-sync', 'POST');
+            showToast(data.message, data.success ? 'success' : 'error');
+        }
+
+        async function deleteAllLogs() {
+            if (!confirm("Xóa sạch toàn bộ log quá khứ. Bạn có chắc không?")) return;
+            const data = await api('/api/execution-log', 'DELETE');
+            if (data.success) {
+                showToast(data.message, 'success');
+                loadExecLog();
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+
+        async function deleteSelectedLogs() {
+            const checks = document.querySelectorAll('.exec-checkbox:checked');
+            if (!checks.length) {
+                showToast('Chưa chọn log nào để xóa', 'error');
+                return;
+            }
+            if (!confirm(`Xóa ${checks.length} log đã chọn?`)) return;
+            const indices = Array.from(checks).map(c => parseInt(c.value, 10));
+            const data = await api('/api/execution-log/bulk-delete', 'POST', { indices });
+            if (data.success) {
+                showToast(data.message, 'success');
+                loadExecLog();
+                loadDashboard();
+            } else {
+                showToast(data.message, 'error');
+            }
+        }
+
+        // ─── Init ───
+        loadDashboard();
+        setInterval(loadDashboard, 30000);
+    </script>
+</body>
+
+</html>

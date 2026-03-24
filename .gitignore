@@ -1,0 +1,24 @@
+# --- Secrets ---
+.env
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Virtual environments ---
+venv/
+.venv/
+env/
+
+# --- Runtime data (per-user, not source code) ---
+app_config.json
+execution_log.json
+
+# --- OS / Editor ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
