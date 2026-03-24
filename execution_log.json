@@ -1,5 +1,77 @@
 [
   {
+    "id": "exec_72b6baae",
+    "time": "2026-03-25 00:41:01",
+    "watchlist_id": "wl_fab0af58",
+    "watchlist_name": "AI Tech",
+    "steps": {
+      "fetch": {
+        "status": "success",
+        "tweet_count": 2,
+        "detail": "Fetched 2 tweets from 3 accounts"
+      },
+      "ai": {
+        "status": "success",
+        "model": "gemini_free_3",
+        "detail": "Summarized 2 tweets"
+      },
+      "telegram": {
+        "status": "success",
+        "detail": "Message sent"
+      }
+    },
+    "raw_tweets": "[1] @elonmusk (25/03/2026 00:15:13 UTC+7): The Cybertruck rear bench has three sets of isofix attachments and is wide enough to fit three child seats or three adults [Likes: 9339]\n\n[2] @AnthropicAI (24/03/2026 23:31:29 UTC+7): New on the Anthropic Engineering Blog: \n\nHow we use a multi-agent harness to push Claude further in frontend design and long-running autonomous software engineering.\n\nRead more: https://t.co/HWvmXk1ykn [Likes: 992]",
+    "ai_summary": "🤖 *ANTHROPIC* TRIỂN KHAI HỆ THỐNG *MULTI-AGENT HARNESS*: Công nghệ mới giúp tối ưu hóa mô hình *CLAUDE* trong việc thiết kế *FRONTEND* và thực hiện các tác vụ kỹ thuật phần mềm tự trị (*AUTONOMOUS SOFTWARE ENGINEERING*) kéo dài. @AnthropicAI"
+  },
+  {
+    "id": "exec_1cbe54e9",
+    "time": "2026-03-24 23:27:58",
+    "watchlist_id": "wl_fab0af58",
+    "watchlist_name": "AI Tech",
+    "steps": {
+      "fetch": {
+        "status": "success",
+        "tweet_count": 4,
+        "detail": "Fetched 4 tweets from 3 accounts"
+      },
+      "ai": {
+        "status": "success",
+        "model": "gemini_free_3",
+        "detail": "Summarized 4 tweets"
+      },
+      "telegram": {
+        "status": "success",
+        "detail": "Message sent"
+      }
+    },
+    "raw_tweets": "[1] @elonmusk (24/03/2026 19:54:20 UTC+7): [RT của @lexfridman (ID: 2036123301140111406)]: Here's my conversation with Jensen Huang, CEO of NVIDIA, the most valuable & one of the most influential companies in the history of human civilization. It is the engine powering the AI revolution.\n\nThis was a fascinating & inspiring conversation, in parts super-technical on engineering of every part of the AI stack, memory, power, supply chain (TSMC, ASML, etc), in parts about leadership & psychology, and in parts personal & philosophical about life, consciousness, mortality, and human nature.\n\nIt's here on X in full and is up everywhere else (see comment).\n\nTimestamps:\n0:00 - Introduction\n0:33 - Extreme co-design and rack-scale engineering\n3:18 - How Jensen runs NVIDIA\n22:40 - AI scaling laws\n37:40 - Biggest blockers to AI scaling laws\n39:23 - Supply chain\n41:18 - Memory\n47:24 - Power\n52:43 - Elon and Colossus\n56:11 - Jensen's approach to engineering and leadership\n1:01:37 - China\n1:09:50 - TSMC and Taiwan\n1:15:04 - NVIDIA's moat\n1:20:41 - AI data centers in space\n1:24:30 - Will NVIDIA be worth $10 trillion?\n1:34:39 - Leadership under pressure\n1:48:25 - Video games\n1:55:16 - AGI timeline\n1:57:29 - Future of programming\n2:11:01 - Consciousness\n2:17:22 - Mortality [Likes: 0]\n  [VIDEO] https://video.twimg.com/amplify_video/2036112762687156224/vid/avc1/1920x1080/LtPv9hc4JSkkFowL.mp4\n\n[2] @elonmusk (24/03/2026 19:52:29 UTC+7): [RT của @XFreeze (ID: 2036424473885450330)]: Joe Rogan really bet Elon Musk $1 that he could pierce the Cybertruck with his compound bow\n\nit literally exploded against the stainless steel exoskeleton and it barely scratched it 😂 https://t.co/xkukWNckPV [Likes: 0]\n  [VIDEO] https://video.twimg.com/amplify_video/2036423845171830788/vid/avc1/2560x1440/t-gBZVtcw6Fn1okQ.mp4\n\n[3] @elonmusk (24/03/2026 19:49:14 UTC+7): [RT của @DefiantLs (ID: 2036148472248934828)]: Anna Paulina Luna: \"I have enough evidence to believe both Governor Tim Walz and  Keith Ellison were knowingly complicit in a Somali fraud scheme in Minnesota. Therefore I have referred them BOTH to the DOJ for criminal charges. May justice be swift.\"\n\nhttps://t.co/ZpNr7mUsQx [Likes: 0]\n  [VIDEO] https://video.twimg.com/amplify_video/2035901021457911808/vid/avc1/1920x1080/J1hYJJsejTApGoJE.mp4\n\n[4] @elonmusk (24/03/2026 19:47:02 UTC+7): [RT của @jon (ID: 2036410383359983676)]: This is why https://t.co/0j5uElztmB https://t.co/J9ovKjNW1Y [Likes: 0]\n  [PHOTO] https://pbs.twimg.com/media/HELIcxYagAE2ZlF.jpg",
+    "ai_summary": "TỔNG HỢP TIN TỨC CÔNG NGHỆ AI\n\n🚀 *HỘI THOẠI CHIẾN LƯỢC GIỮA JENSEN HUANG (CEO NVIDIA) VÀ LEX FRIDMAN*\n\n- NVIDIA được định nghĩa là *động cơ chính* thúc đẩy cuộc cách mạng AI toàn cầu, đóng vai trò quan trọng nhất trong lịch sử công nghệ.\n- *KỸ THUẬT HỆ THỐNG*: Tập trung vào thiết kế đồng bộ cực hạn (extreme co-design) và kỹ thuật quy mô tủ rack (rack-scale engineering).\n- *CHUỖI CUNG ỨNG*: Phân tích sâu về vai trò của *TSMC, ASML* và các thách thức tại Đài Loan/Trung Quốc.\n- *CÁC YẾU TỐ CỐT LÕI CỦA AI*:\n    + *Định luật mở rộng (Scaling Laws)*: Thảo luận về các rào cản lớn nhất hiện nay.\n    + *Hạ tầng*: Giải quyết bài toán về bộ nhớ (Memory) và năng lượng (Power).\n    + *Dữ liệu*: Ý tưởng về các trung tâm dữ liệu AI ngoài không gian.\n- *TẦM NHÌN TƯƠNG LAI*:\n    + Dự báo mốc thời gian đạt tới *AGI* (Trí tuệ nhân tạo tổng quát).\n    + Tương lai của ngành lập trình và khả năng vốn hóa của NVIDIA có thể chạm mốc *10.000 TỶ USD*.\n    + Đánh giá về siêu máy tính *Colossus* của Elon Musk. @elonmusk, @lexfridman\n\n🚗 *THỬ NGHIỆM ĐỘ BỀN VẬT LIỆU CYBERTRUCK*\n\n- Thử nghiệm thực tế cho thấy lớp vỏ thép không gỉ (stainless steel exoskeleton) của Cybertruck chịu được tác động mạnh từ cung tên hợp lực (compound bow).\n- Kết quả: Mũi tên bị phá hủy hoàn toàn khi va chạm trong khi bề mặt xe chỉ bị trầy xước nhẹ, minh chứng cho độ bền vật lý của cấu trúc xe điện thế hệ mới. @elonmusk, @XFreeze"
+  },
+  {
+    "id": "exec_fc48b633",
+    "time": "2026-03-24 22:44:15",
+    "watchlist_id": "wl_b445933e",
+    "watchlist_name": "War & Politics",
+    "steps": {
+      "fetch": {
+        "status": "success",
+        "tweet_count": 12,
+        "detail": "Fetched 12 tweets from 4 accounts"
+      },
+      "ai": {
+        "status": "success",
+        "model": "gemini_free_2",
+        "detail": "Summarized 12 tweets"
+      },
+      "telegram": {
+        "status": "success",
+        "detail": "Message sent"
+      }
+    },
+    "raw_tweets": "[1] @Polymarket (24/03/2026 22:36:16 UTC+7): 24% chance a nuclear deal is signed by the end of next month. https://t.co/K2G1dm0toG [Likes: 10]\n\n[2] @Polymarket (24/03/2026 22:35:18 UTC+7): BREAKING: Iran now confirms there has been outreach between the U.S. and Iran and that Iran is “willing to listen” to proposals. [Likes: 229]\n\n[3] @Polymarket (24/03/2026 22:28:19 UTC+7): 27% chance a diplomatic meeting is held this month. https://t.co/arCU80tgVY [Likes: 16]\n\n[4] @JavierBlas (24/03/2026 22:24:21 UTC+7): Tehran is now running an anti-jawboning oil campaign against the White House. https://t.co/0T6EHdhFvW\n  [Trích dẫn @mb_ghalibaf (ID: 2036457976878268581)]: We are aware of what is happening in the paper oil market, including the firms hired to influence oil futures. We also see the broader jawboning campaign.\n\nBut let’s see if they can turn that into \"actual fuel\" at the pump —or maybe even print gas molecules! [Likes: 97]\n\n[5] @TrumpDailyPosts (24/03/2026 22:10:36 UTC+7): President Trump 47 News Community https://t.co/pRpJqNgqJM\n  [Trích dẫn @WesternJournalX (ID: 2036392987744411886)]: Independent journalist Nick Shirley told Fox News host Kayleigh McEnany Saturday he requires security to continue investigating welfare fraud in blue states. Shirley posted a 42-minute video on YouTube on Dec. 26, featuring him visiting multiple… https://t.co/v660Xjjnji https://t.co/eQDpxpBcaS [Likes: 113]\n  [PHOTO] https://pbs.twimg.com/media/HEK4oaTaIAcx0Bp.jpg\n\n[6] @Polymarket (24/03/2026 22:09:56 UTC+7): JUST IN: Pakistani Prime Minister says Pakistan “stands ready and honoured” to host peace talks between U.S. and Iran. [Likes: 477]\n\n[7] @TrumpDailyPosts (24/03/2026 22:03:53 UTC+7): Donald J. Trump Truth Social Post 10:46 AM EST 03.24.26 https://t.co/UNLDseZir6 [Likes: 306]\n  [PHOTO] https://pbs.twimg.com/media/HEL0hDKakAA-mQJ.jpg\n\n[8] @Polymarket (24/03/2026 22:03:11 UTC+7): BREAKING: 10-year Treasury yield now projected to dip below 3.9% this year.\n\n58% chance. \nhttps://t.co/ldY3IsV7BO [Likes: 98]\n\n[9] @WarMonitor3 (24/03/2026 22:01:02 UTC+7): Just to be clear about how insane this is, the YAK 52 first flew in 1976, this guy day job is flying around the sky rolling his window down shooting drones... https://t.co/i6cPb40AmZ https://t.co/ie7R3AhZnq\n  [Trích dẫn @WarMonitor3 (ID: 2036457741049368907)]: Incredible video of a Ukrainian pilot using a gun to shoot a Russian drone out of the sky whilst aboard a Yak-2 training aircraft thousands of metres in the air. https://t.co/ovu3hz01Ib [Likes: 222]\n  [PHOTO] https://pbs.twimg.com/media/HELzzrda4AEQGON.jpg\n\n[10] @TrumpDailyPosts (24/03/2026 22:00:21 UTC+7): https://t.co/3ZPS0MGcEB [Likes: 108]\n\n[11] @WarMonitor3 (24/03/2026 21:58:55 UTC+7): Incredible video of a Ukrainian pilot using a gun to shoot a Russian drone out of the sky whilst aboard a Yak-2 training aircraft thousands of metres in the air. https://t.co/ovu3hz01Ib [Likes: 769]\n  [VIDEO] https://video.twimg.com/amplify_video/2036457670056747014/vid/avc1/1168x1046/dw43j8N6_22_AUo1.mp4\n\n[12] @Polymarket (24/03/2026 21:54:23 UTC+7): [RT của @Gate (ID: 2036405683281617195)]: Did you win this prediction? Gate becomes the first CEX to integrate @Polymarket, bringing a new way to trade global events. \n\nFrom sports and crypto to macro trends, just pick Yes or No and turn insights into returns. Seamless trading, instant execution, and auto settlement into stablecoins, all in one place. Public beta is now live. Try it now!\n\nLearn more: https://t.co/mISnei2Aw8 [Likes: 0]\n  [PHOTO] https://pbs.twimg.com/media/HELELQzWEAA1wXm.jpg",
+    "ai_summary": "🇮🇷 **TIẾN TRIỂN NGOẠI GIAO GIỮA MỸ VÀ IRAN**\n**IRAN** chính thức xác nhận đã có các hoạt động tiếp cận với **HOA KỲ**. Chính quyền Tehran tuyên bố *\"SẴN SÀNG LẮNG NGHE\"* các đề xuất từ phía Mỹ để giải quyết căng thẳng. @Polymarket\n\n📉 **XÁC SUẤT CÁC SỰ KIỆN QUAN TRỌNG**\nCác dữ liệu dự báo ghi nhận khả năng xảy ra các cột mốc ngoại giao như sau:\n- **_27%_** khả năng một cuộc gặp ngoại giao sẽ được tổ chức ngay trong *tháng 03/2026*.\n- **_24%_** khả năng một thỏa thuận hạt nhân mới sẽ được ký kết vào *cuối tháng 04/2026*. @Polymarket\n\n🇵🇰 **PAKISTAN ĐỀ XUẤT LÀM TRUNG GIAN HÒA GIẢI**\nThủ tướng **PAKISTAN** tuyên bố quốc gia này *\"SẴN SÀNG VÀ VINH DỰ\"* đứng ra tổ chức các cuộc đàm phán hòa bình giữa **MỸ** và **IRAN** nhằm hạ nhiệt xung đột. @Polymarket\n\n🛢️ **MẶT TRẬN KINH TẾ VÀ THỊ TRƯỜNG DẦU MỎ**\n**TEHRAN** đang triển khai chiến dịch chống lại các nỗ lực điều phối tâm lý thị trường (*anti-jawboning*) từ phía **NHÀ TRẮNG**. Phía Iran cáo buộc Mỹ sử dụng các công ty tài chính để tác động vào thị trường dầu mỏ phái sinh nhằm gây sức ép kinh tế. Đại diện Iran thách thức khả năng biến các con số trên giấy tờ thành *\"NHIÊN LIỆU THỰC TẾ\"* tại các cây xăng. @JavierBlas\n\n📊 **CHỈ SỐ TÀI CHÍNH LIÊN QUAN**\nDự báo lợi suất trái phiếu Kho bạc kỳ hạn 10 năm của Mỹ có **_58%_** khả năng giảm xuống dưới mức **_3.9%_** trong năm nay, phản ánh kỳ vọng của thị trường trước các biến động địa chính trị. @Polymarket"
+  },
+  {
     "id": "exec_8cba0a40",
     "time": "2026-03-24 21:47:44",
     "watchlist_id": "wl_b445933e",

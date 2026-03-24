@@ -12,18 +12,19 @@
         "21:00"
       ],
       "ai_model": "gemini_free_1",
-      "prompt": "Bạn là một chuyên gia phân tích tin tức. Nhiệm vụ của bạn là tóm tắt các bài đăng Twitter (X) về chủ đề: Crypto\n\nYêu cầu về nội dung:\n1. Tổng hợp thông tin cốt lõi, loại bỏ các chi tiết thừa, lời cảm ơn, link hoặc hashtag không quan trọng.\n2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\nYêu cầu về định dạng (Telegram Markdown Legacy):\n- Sử dụng IN HOA, *in đậm*, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n- Tuyệt đối không sử dụng: Markdown V2, không dùng bảng, không dùng tiêu đề kiểu \\#, \\#\\#, \\#\\#\\#.\n\nPhong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn.",
+      "prompt": "Bạn là một chuyên gia phân tích tin tức. Nhiệm vụ của bạn là tóm tắt các bài đăng Twitter (X) về chủ đề: Crypto\n\nYêu cầu về nội dung:\n1. Tổng hợp thông tin cốt lõi, tập trung vào CHỦ ĐỀ, loại bỏ các nội dung không liên quan, chi tiết thừa, lời cảm ơn, link hoặc hashtag không quan trọng.\n2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\nYêu cầu về định dạng (Telegram Markdown Legacy):\n- Sử dụng IN HOA, *in đậm*, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n- Tuyệt đối không sử dụng: Markdown V2, không dùng bảng, không dùng tiêu đề kiểu \\#, \\#\\#, \\#\\#\\#.\n\nPhong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn.",
       "enabled": true,
       "since_ids": {
         "vitalikbuterin": "2036255733474361605",
         "cz_binance": "2036419158662078609",
         "danny_crypton": "2036073495088566400"
       },
-      "max_posts_per_user": 10
+      "max_posts_per_user": 10,
+      "telegram_targets": []
     },
     {
       "id": "wl_b445933e",
-      "name": "War & Politics",
+      "name": "Oil & Iran War",
       "accounts": [
         "JavierBlas",
         "WarMonitor3",
@@ -34,13 +35,13 @@
         "21:00"
       ],
       "ai_model": "gemini_free_2",
-      "prompt": "Bạn là một chuyên gia phân tích tin tức. Nhiệm vụ của bạn là tóm tắt các bài đăng Twitter (X) về chủ đề: Chiến tranh Iran 2026\n\nYêu cầu về nội dung:\n1. Tổng hợp thông tin cốt lõi, loại bỏ các chi tiết thừa, lời cảm ơn, link hoặc hashtag không quan trọng.\n2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\nYêu cầu về định dạng (Telegram Markdown Legacy):\n- Sử dụng IN HOA, *in đậm*, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n- Tuyệt đối không sử dụng: Markdown V2, không dùng bảng, không dùng tiêu đề kiểu \\#, \\#\\#, \\#\\#\\#.\n\nPhong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn.",
+      "prompt": "Bạn là một chuyên gia phân tích tin tức. Nhiệm vụ của bạn là tóm tắt các bài đăng Twitter (X) về chủ đề: Chiến tranh Iran 2026 và thị trường dầu mỏ\n\nYêu cầu về nội dung:\n1. Tổng hợp thông tin cốt lõi, tập trung vào CHỦ ĐỀ, loại bỏ các nội dung không liên quan, chi tiết thừa, lời cảm ơn, link hoặc hashtag không quan trọng.\n2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\nYêu cầu về định dạng (Telegram Markdown Legacy):\n- Sử dụng IN HOA, *in đậm*, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n- Tuyệt đối không sử dụng: Markdown V2, không dùng bảng, không dùng tiêu đề kiểu \\#, \\#\\#, \\#\\#\\#.\n\nPhong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn.",
       "enabled": true,
       "since_ids": {
-        "javierblas": "2036440451956261267",
-        "warmonitor3": "2036453779164299538",
-        "polymarket": "2036452510072701320",
-        "trumpdailyposts": "2036449979645169783"
+        "javierblas": "2036464140496097451",
+        "warmonitor3": "2036458272790561000",
+        "polymarket": "2036467141218652269",
+        "trumpdailyposts": "2036460682477183452"
       },
       "max_posts_per_user": 10
     },
@@ -57,15 +58,25 @@
         "19:00"
       ],
       "ai_model": "gemini_free_3",
-      "prompt": "Bạn là một chuyên gia phân tích tin tức. Nhiệm vụ của bạn là tóm tắt các bài đăng Twitter (X) về chủ đề: AI và các công nghệ liên quan.\n\nYêu cầu về nội dung:\n1. Tổng hợp thông tin cốt lõi, loại bỏ các chi tiết thừa, lời cảm ơn, link hoặc hashtag không quan trọng.\n2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\nYêu cầu về định dạng (Telegram Markdown Legacy):\n- Sử dụng IN HOA, *in đậm*, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n- Tuyệt đối không sử dụng: Markdown V2, không dùng bảng, không dùng tiêu đề kiểu \\#, \\#\\#, \\#\\#\\#.\n\nPhong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn.",
+      "prompt": "Bạn là một chuyên gia phân tích tin tức. Nhiệm vụ của bạn là tóm tắt các bài đăng Twitter (X) về chủ đề: AI và các công nghệ liên quan.\n\nYêu cầu về nội dung:\n1. Tổng hợp thông tin cốt lõi, tập trung vào CHỦ ĐỀ, loại bỏ các nội dung không liên quan, chi tiết thừa, lời cảm ơn, link hoặc hashtag không quan trọng.\n2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\nYêu cầu về định dạng (Telegram Markdown Legacy):\n- Sử dụng IN HOA, *in đậm*, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n- Tuyệt đối không sử dụng: Markdown V2, không dùng bảng, không dùng tiêu đề kiểu \\#, \\#\\#, \\#\\#\\#.\n\nPhong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn.",
       "enabled": true,
       "since_ids": {
-        "anthropicai": "2036179045143158925",
+        "anthropicai": "2036481033621623056",
         "tesla_optimus": "2029638772913315862",
-        "elonmusk": "2036420345750757784"
+        "elonmusk": "2036492040528339171"
       },
       "max_posts_per_user": 10
     }
   ],
-  "total_fetches": 35
+  "total_fetches": 38,
+  "telegram_targets_cache": [
+    {
+      "id": "1342714459",
+      "name": "Andrew T 🦴 (1342714459)"
+    },
+    {
+      "id": "-1001504019313",
+      "name": "#Crypto for Freedom (-1001504019313)"
+    }
+  ]
 }

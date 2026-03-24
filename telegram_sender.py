@@ -105,6 +105,68 @@ def send_message(text: str, parse_mode: str = "Markdown") -> dict:
     }
 
 
+def send_message_to_targets(text: str, target_ids: list, parse_mode: str = "Markdown") -> dict:
+    """
+    Gui tin nhan den danh sach chat IDs cu the (per-watchlist).
+
+    Args:
+        text: Noi dung tin nhan
+        target_ids: List cac chat ID strings
+        parse_mode: "Markdown" hoac "HTML"
+
+    Returns:
+        dict: {"success": bool, "message": str}
+    """
+    if parse_mode == "Markdown":
+        text = escape_telegram_markdown(text)
+
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    if not bot_token:
+        return {"success": False, "message": "TELEGRAM_BOT_TOKEN chua duoc cau hinh"}
+    if not target_ids:
+        return {"success": False, "message": "Khong co Telegram target nao duoc chon"}
+
+    chunks = split_message(text)
+    total_sent = 0
+    errors = []
+
+    for chat_id in target_ids:
+        for chunk in chunks:
+            url = f"{TELEGRAM_API}/bot{bot_token}/sendMessage"
+            payload = {
+                "chat_id": chat_id,
+                "text": chunk,
+                "parse_mode": parse_mode,
+                "disable_web_page_preview": True,
+            }
+            try:
+                response = requests.post(url, json=payload, timeout=10)
+                if response.status_code == 200:
+                    total_sent += 1
+                else:
+                    error_data = response.json()
+                    error_desc = error_data.get("description", "Unknown error")
+                    if "can't parse" in error_desc.lower():
+                        payload["parse_mode"] = ""
+                        retry = requests.post(url, json=payload, timeout=10)
+                        if retry.status_code == 200:
+                            total_sent += 1
+                        else:
+                            errors.append(f"Chat {chat_id}: {error_desc}")
+                    else:
+                        errors.append(f"Chat {chat_id} (HTTP {response.status_code}): {error_desc}")
+            except Exception as e:
+                errors.append(f"Chat {chat_id} Exception: {str(e)}")
+
+    if errors:
+        return {"success": False, "message": " | ".join(errors)}
+
+    return {
+        "success": True,
+        "message": f"Da gui thanh cong {total_sent} tin nhan den {len(target_ids)} chats",
+    }
+
+
 def split_message(text: str) -> list:
     """
     Chia tin nhan thanh cac phan nho hon 4096 ky tu.
@@ -160,3 +222,39 @@ def test_connection() -> dict:
             return {"success": False, "bot_name": "", "message": f"HTTP {response.status_code}"}
     except Exception as e:
         return {"success": False, "bot_name": "", "message": str(e)}
+
+
+def get_chat_names(chat_ids: list) -> dict:
+    """
+    Lấy tên chat thật từ Telegram API.
+    """
+    config = get_telegram_config()
+    token = config.get("bot_token")
+    if not token or not chat_ids:
+        return {}
+
+    names = {}
+    from concurrent.futures import ThreadPoolExecutor
+
+    def fetch_name(cid):
+        url = f"{TELEGRAM_API}/bot{token}/getChat"
+        try:
+            r = requests.post(url, json={"chat_id": cid}, timeout=5)
+            if r.status_code == 200:
+                chat = r.json().get("result", {})
+                title = chat.get("title")
+                if not title:
+                    first = chat.get("first_name", "")
+                    last = chat.get("last_name", "")
+                    title = f"{first} {last}".strip()
+                return cid, title
+        except Exception:
+            pass
+        return cid, None
+
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        for cid, title in ex.map(fetch_name, chat_ids):
+            if title:
+                names[cid] = title
+
+    return names

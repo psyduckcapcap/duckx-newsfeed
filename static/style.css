@@ -57,6 +57,13 @@ body {
     font-size: 1.75rem;
 }
 
+.logo-img {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 .header h1 {
     font-size: 1.25rem;
     font-weight: 600;
@@ -431,6 +438,18 @@ textarea {
 
 .tag.time-tag {
     color: var(--warning);
+}
+
+.tag.tg-tag {
+    color: #7dd3fc;
+    border-color: #1e4a6b;
+    background: rgba(125, 211, 252, 0.08);
+}
+
+.tg-select {
+    flex: 1;
+    font-size: 0.8rem;
+    padding: 0.35rem 0.6rem;
 }
 
 .tag-remove {

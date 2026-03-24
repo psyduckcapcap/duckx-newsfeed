@@ -154,6 +154,7 @@ def create_watchlist(name: str) -> dict:
         "enabled": True,
         "since_ids": {},
         "max_posts_per_user": 10,
+        "telegram_targets": [],  # List of chat IDs to send to; empty = use global TELEGRAM_CHAT_ID
     }
     config["watchlists"].append(new_wl)
     save_config(config)
@@ -164,7 +165,7 @@ def update_watchlist(wl_id: str, updates: dict) -> bool:
     config = load_config()
     for wl in config["watchlists"]:
         if wl["id"] == wl_id:
-            allowed_fields = ["name", "schedule_times", "ai_model", "prompt", "enabled", "max_posts_per_user"]
+            allowed_fields = ["name", "schedule_times", "ai_model", "prompt", "enabled", "max_posts_per_user", "telegram_targets"]
             for key in allowed_fields:
                 if key in updates:
                     wl[key] = updates[key]
@@ -243,6 +244,54 @@ def reset_all_since_ids():
     for wl in config.get("watchlists", []):
         wl["since_ids"] = {}
     save_config(config)
+
+# ─────────────────────────────────────────────
+# Telegram Targets
+# ─────────────────────────────────────────────
+
+def update_telegram_targets_cache():
+    """
+    Đọc list Telegram chat IDs từ biến môi trường TELEGRAM_CHAT_ID, gọi API lấy tên thật
+    và lưu vào cache trong app_config.json để UI lấy nhanh.
+    """
+    raw = os.getenv("TELEGRAM_CHAT_ID", "")
+    target_ids = []
+    for cid in raw.split(","):
+        cid = cid.strip()
+        if cid:
+            target_ids.append(cid)
+
+    config = load_config()
+    if not target_ids:
+        config["telegram_targets_cache"] = []
+        save_config(config)
+        return
+
+    from telegram_sender import get_chat_names
+    names_map = get_chat_names(target_ids)
+
+    cached_targets = []
+    for cid in target_ids:
+        real_name = names_map.get(cid)
+        if real_name:
+            name = f"{real_name} ({cid})"
+        else:
+            if cid.startswith("-100"):
+                name = f"Channel/Group ({cid})"
+            elif cid.startswith("-"):
+                name = f"Group ({cid})"
+            else:
+                name = f"Personal ({cid})"
+        cached_targets.append({"id": cid, "name": name})
+
+    config["telegram_targets_cache"] = cached_targets
+    save_config(config)
+
+def get_cached_telegram_targets() -> list:
+    """Trả về list các Telegram targets lấy từ cache trong file json."""
+    config = load_config()
+    return config.get("telegram_targets_cache", [])
+
 
 # ─────────────────────────────────────────────
 # Execution Log & Stats

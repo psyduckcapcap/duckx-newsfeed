@@ -24,7 +24,7 @@ import pytz
 import config_manager
 from x_api import XApiClient, tweets_to_text
 from ai_summarizer import summarize_tweets
-from telegram_sender import send_message, test_connection
+from telegram_sender import send_message, send_message_to_targets, test_connection
 
 # Load .env
 load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
@@ -188,7 +188,12 @@ def run_fetch_for_watchlist(wl_id: str):
         try:
             now_vn = datetime.now(TZ_VN).strftime("%d/%m/%Y %H:%M")
             header = f"📋 *DuckX Newsfeed: {wl_name}*\n⏰ {now_vn}\n📊 {fetch_count} tweets\n\n"
-            tg_result = send_message(header + ai_summary_text)
+            # Use watchlist-specific targets if configured, otherwise fall back to global
+            wl_targets = wl.get("telegram_targets", [])
+            if wl_targets:
+                tg_result = send_message_to_targets(header + ai_summary_text, wl_targets)
+            else:
+                tg_result = send_message(header + ai_summary_text)
 
             if tg_result["success"]:
                 tg_status = "success"
@@ -419,6 +424,12 @@ def api_ai_models():
     return jsonify({"models": models})
 
 
+@app.route("/api/telegram-targets")
+def api_telegram_targets():
+    """Return list of Telegram chat IDs from cache for UI display."""
+    return jsonify({"targets": config_manager.get_cached_telegram_targets()})
+
+
 # ─────────────────────────────────────────────────
 # Main
 # ─────────────────────────────────────────────────
@@ -430,6 +441,10 @@ def main():
     args = parser.parse_args()
 
     rebuild_scheduler()
+
+    # Cập nhật Telegram Targets Cache ở background ngay khi mở app
+    import threading
+    threading.Thread(target=config_manager.update_telegram_targets_cache, daemon=True).start()
 
     wl_count = len(config_manager.get_watchlists())
     jobs = [j for j in scheduler.get_jobs() if j.id.startswith("wl_")]
