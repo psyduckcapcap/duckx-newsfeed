@@ -32,7 +32,7 @@
 ### 1. Clone repository
 
 ```bash
-git clone https://github.com/your-username/duckx-newsfeed.git
+git clone https://github.com/psyduckcapcap/duckx-newsfeed.git
 cd duckx-newsfeed
 ```
 
