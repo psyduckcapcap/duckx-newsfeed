@@ -1,5 +1,29 @@
 [
   {
+    "id": "exec_9b46eb0e",
+    "time": "2026-03-26 12:05:03",
+    "watchlist_id": "wl_fab0af58",
+    "watchlist_name": "AI Tech",
+    "steps": {
+      "fetch": {
+        "status": "success",
+        "tweet_count": 0,
+        "detail": "No new tweets"
+      },
+      "ai": {
+        "status": "skipped",
+        "model": "",
+        "detail": ""
+      },
+      "telegram": {
+        "status": "skipped",
+        "detail": ""
+      }
+    },
+    "raw_tweets": "",
+    "ai_summary": ""
+  },
+  {
     "id": "exec_7c8c3732",
     "time": "2026-03-26 11:10:08",
     "watchlist_id": "wl_b445933e",

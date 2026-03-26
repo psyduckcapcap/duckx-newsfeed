@@ -21,9 +21,9 @@
 ## 📋 Yêu cầu
 
 - Python 3.10+
-- X (Twitter) Developer Account (X API chỉ áp dụng pay-per-usage, trả tiền theo số lượng posts truy xuất)
+- X (Twitter) Developer Account (X API chỉ áp dụng pay-per-usage, trả tiền theo số lượng tweets truy xuất)
 - Google AI Studio account (Gemini API key - miễn phí)
-- Telegram Bot (miễn phí, tạo qua @BotFather)
+- Telegram Bot (tạo qua @BotFather - miễn phí)
 
 ---
 
