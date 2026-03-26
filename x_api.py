@@ -5,9 +5,13 @@ Sử dụng OAuth 1.0a (4 keys) để xác thực user context.
 Hỗ trợ lấy home timeline, user tweets, và thông tin user.
 """
 
+import time
+import logging
 import requests
 from requests_oauthlib import OAuth1
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+
+logger = logging.getLogger(__name__)
 
 
 class XApiClient:
@@ -16,15 +20,6 @@ class XApiClient:
     BASE_URL = "https://api.x.com/2"
 
     def __init__(self, api_key: str, api_secret: str, access_token: str, access_token_secret: str):
-        """
-        Khởi tạo client với OAuth 1.0a credentials.
-        
-        Args:
-            api_key: API Key (Consumer Key)
-            api_secret: API Key Secret (Consumer Secret)
-            access_token: Access Token
-            access_token_secret: Access Token Secret
-        """
         self.auth = OAuth1(
             client_key=api_key,
             client_secret=api_secret,
@@ -34,79 +29,80 @@ class XApiClient:
         self._user_id = None
         self._username = None
 
-    def _make_request(self, method: str, endpoint: str, params: dict = None) -> dict:
+    def _make_request(self, method: str, endpoint: str, params: dict = None, max_retries: int = 2) -> dict:
         """
-        Gửi HTTP request đến X API.
-        
+        Gửi HTTP request đến X API, tự retry khi bị rate limit (429).
+
         Args:
             method: "GET" hoặc "POST"
             endpoint: API endpoint path (vd: "/users/me")
             params: Query parameters
-            
+            max_retries: Số lần retry tối đa cho 429/5xx errors
+
         Returns:
             dict: JSON response từ API
-            
+
         Raises:
-            Exception: Nếu API trả về lỗi
+            Exception: Nếu API trả về lỗi sau khi hết retry
         """
         url = f"{self.BASE_URL}{endpoint}"
-        
-        response = requests.request(
-            method=method,
-            url=url,
-            auth=self.auth,
-            params=params,
-        )
 
-        if response.status_code == 200:
-            return response.json()
-        elif response.status_code == 401:
-            raise Exception(
-                "❌ Lỗi xác thực (401). Kiểm tra lại API keys.\n"
-                "   Đảm bảo rằng Access Token có quyền Read."
+        for attempt in range(max_retries + 1):
+            response = requests.request(
+                method=method,
+                url=url,
+                auth=self.auth,
+                params=params,
             )
-        elif response.status_code == 403:
-            raise Exception(
-                "❌ Bị từ chối truy cập (403). Có thể do:\n"
-                "   - Chưa nạp credits (pay-per-use)\n"
-                "   - API Key không có quyền truy cập endpoint này\n"
-                "   - Tài khoản Dev chưa được kích hoạt đầy đủ"
-            )
-        elif response.status_code == 429:
-            raise Exception(
-                "⏳ Rate limit exceeded (429). Bạn đã gửi quá nhiều request.\n"
-                "   Hãy đợi vài phút rồi thử lại."
-            )
-        else:
-            error_detail = response.text
-            raise Exception(
-                f"❌ Lỗi API ({response.status_code}): {error_detail}"
-            )
+
+            if response.status_code == 200:
+                return response.json()
+
+            # Retry on rate limit or server errors
+            if response.status_code in (429, 500, 502, 503) and attempt < max_retries:
+                retry_after = int(response.headers.get("Retry-After", 5))
+                wait = min(retry_after, 30)
+                logger.warning(f"X API {response.status_code} on {endpoint}, retry in {wait}s (attempt {attempt + 1}/{max_retries})")
+                time.sleep(wait)
+                continue
+
+            # Non-retryable errors
+            if response.status_code == 401:
+                raise Exception(
+                    "Loi xac thuc (401). Kiem tra lai API keys. "
+                    "Dam bao rang Access Token co quyen Read."
+                )
+            elif response.status_code == 403:
+                raise Exception(
+                    "Bi tu choi truy cap (403). Co the do: "
+                    "chua nap credits, API Key khong co quyen, "
+                    "hoac tai khoan Dev chua kich hoat."
+                )
+            elif response.status_code == 429:
+                raise Exception(
+                    "Rate limit exceeded (429). Da gui qua nhieu request. "
+                    "Hay doi vai phut roi thu lai."
+                )
+            else:
+                raise Exception(
+                    f"Loi API ({response.status_code}): {response.text[:300]}"
+                )
 
     # ─────────────────────────────────────────────
     # User Info
     # ─────────────────────────────────────────────
 
     def get_me(self) -> dict:
-        """
-        Lấy thông tin user đang xác thực (bạn).
-        
-        Endpoint: GET /2/users/me
-        Cost: $0.010 per request (User: Read)
-        
-        Returns:
-            dict: Thông tin user (id, name, username, ...)
-        """
+        """Lấy thông tin user đang xác thực."""
         params = {
             "user.fields": "id,name,username,description,profile_image_url,public_metrics,created_at",
         }
         result = self._make_request("GET", "/users/me", params=params)
-        
-        # Cache user ID cho các request khác
+
         if "data" in result:
             self._user_id = result["data"]["id"]
             self._username = result["data"]["username"]
-        
+
         return result
 
     def get_user_id(self) -> str:
@@ -120,31 +116,19 @@ class XApiClient:
     # ─────────────────────────────────────────────
 
     def get_home_timeline(self, max_results: int = 20, pagination_token: str = None) -> dict:
-        """
-        Lấy Home Timeline - tweets từ các accounts bạn follow.
-        
-        Endpoint: GET /2/users/:id/timelines/reverse_chronological
-        Cost: $0.005 per post (Posts: Read)
-        
-        Args:
-            max_results: Số tweets tối đa (10-100, mặc định 20)
-            pagination_token: Token để lấy trang tiếp theo
-            
-        Returns:
-            dict: Danh sách tweets với thông tin chi tiết
-        """
+        """Lấy Home Timeline - tweets từ các accounts bạn follow."""
         user_id = self.get_user_id()
-        
+
         params = {
-            "max_results": min(max(max_results, 10), 100),  # Giới hạn 10-100
+            "max_results": min(max(max_results, 10), 100),
             "tweet.fields": "created_at,author_id,text,public_metrics,lang,source,conversation_id,referenced_tweets",
             "expansions": "author_id,referenced_tweets.id",
             "user.fields": "name,username,profile_image_url,verified",
         }
-        
+
         if pagination_token:
             params["pagination_token"] = pagination_token
-        
+
         return self._make_request(
             "GET",
             f"/users/{user_id}/timelines/reverse_chronological",
@@ -156,24 +140,10 @@ class XApiClient:
     # ─────────────────────────────────────────────
 
     def get_user_tweets(self, user_id: str = None, username: str = None, max_results: int = 10) -> dict:
-        """
-        Lấy tweets của một user cụ thể.
-        
-        Endpoint: GET /2/users/:id/tweets
-        Cost: $0.005 per post (Posts: Read)
-        
-        Args:
-            user_id: User ID (ưu tiên dùng)
-            username: Username (sẽ tự tìm user_id nếu không có user_id)
-            max_results: Số tweets tối đa (5-100, mặc định 10)
-            
-        Returns:
-            dict: Danh sách tweets
-        """
+        """Lấy tweets của một user cụ thể."""
         if user_id is None and username is None:
-            raise ValueError("Phải cung cấp user_id hoặc username")
-        
-        # Nếu chỉ có username, tìm user_id
+            raise ValueError("Phai cung cap user_id hoac username")
+
         if user_id is None:
             user_info = self.get_user_by_username(username)
             user_id = user_info["data"]["id"]
@@ -184,7 +154,7 @@ class XApiClient:
             "expansions": "author_id",
             "user.fields": "name,username,profile_image_url",
         }
-        
+
         return self._make_request("GET", f"/users/{user_id}/tweets", params=params)
 
     # ─────────────────────────────────────────────
@@ -192,26 +162,27 @@ class XApiClient:
     # ─────────────────────────────────────────────
 
     def get_user_by_username(self, username: str) -> dict:
-        """
-        Tìm thông tin user bằng username.
-        
-        Endpoint: GET /2/users/by/username/:username
-        Cost: $0.010 per request (User: Read)
-        
-        Args:
-            username: Username (không có @)
-            
-        Returns:
-            dict: Thông tin user
-        """
-        # Bỏ @ nếu có
+        """Tìm thông tin user bằng username."""
         username = username.lstrip("@")
-        
         params = {
             "user.fields": "id,name,username,description,public_metrics,profile_image_url",
         }
-        
         return self._make_request("GET", f"/users/by/username/{username}", params=params)
+
+    def get_users_by_usernames(self, usernames: list) -> dict:
+        """
+        Batch lookup nhiều users bằng usernames (tối đa 100).
+
+        Endpoint: GET /2/users/by
+        Returns:
+            dict: {"data": [...], "errors": [...]}
+        """
+        cleaned = [u.lstrip("@") for u in usernames]
+        params = {
+            "usernames": ",".join(cleaned),
+            "user.fields": "id,name,username,profile_image_url",
+        }
+        return self._make_request("GET", "/users/by", params=params)
 
     # ─────────────────────────────────────────────
     # Watchlist - Batch fetch from multiple users
@@ -220,19 +191,7 @@ class XApiClient:
     def get_watchlist_tweets(self, usernames: list, max_per_user: int = 10, since_ids: dict = None) -> dict:
         """
         Lấy tweets mới từ nhiều users (watchlist).
-        
-        Args:
-            usernames: Danh sách usernames
-            max_per_user: Số tweets tối đa mỗi user (1-100)
-            since_ids: Dict {username: last_tweet_id} để chỉ lấy tweets mới
-            
-        Returns:
-            dict: {
-                "tweets": [list of all tweets sorted by time],
-                "users_map": {author_id: user_info},
-                "new_since_ids": {username: newest_tweet_id},
-                "errors": {username: error_message}
-            }
+        Dùng batch user lookup để giảm API calls (N+1 thay vì 2N).
         """
         if since_ids is None:
             since_ids = {}
@@ -242,40 +201,66 @@ class XApiClient:
         new_since_ids = {}
         errors = {}
 
+        # ── Batch lookup user IDs (1 API call thay vì N) ──
+        uid_map = {}  # username_lower -> {id, data}
+        try:
+            batch_result = self.get_users_by_usernames(usernames)
+            for user_data in batch_result.get("data", []):
+                uname = user_data["username"].lower()
+                uid_map[uname] = user_data
+                users_map[user_data["id"]] = user_data
+
+            # Track users not found
+            for api_err in batch_result.get("errors", []):
+                detail = api_err.get("detail", "")
+                # Extract username from error if possible
+                resource_id = api_err.get("value", "")
+                if resource_id:
+                    errors[resource_id] = detail or "User not found"
+        except Exception as e:
+            # Fallback: nếu batch fails, thử từng user
+            logger.warning(f"Batch user lookup failed ({e}), falling back to individual lookups")
+            for username in usernames:
+                try:
+                    user_info = self.get_user_by_username(username)
+                    if "data" in user_info:
+                        user_data = user_info["data"]
+                        uid_map[username.lower()] = user_data
+                        users_map[user_data["id"]] = user_data
+                    else:
+                        errors[username] = "User not found"
+                except Exception as ue:
+                    errors[username] = str(ue)
+
+        # ── Fetch tweets per user ──
         for username in usernames:
-            try:
-                # Lookup user ID
-                user_info = self.get_user_by_username(username)
-                if "data" not in user_info:
+            uname_lower = username.lower()
+            user_data = uid_map.get(uname_lower)
+            if not user_data:
+                if uname_lower not in errors:
                     errors[username] = "User not found"
-                    continue
+                continue
 
-                uid = user_info["data"]["id"]
-                users_map[uid] = user_info["data"]
+            uid = user_data["id"]
 
-                # Build params
+            try:
                 params = {
-                    "max_results": min(max(max_per_user, 5), 100), # Twitter API requires between 5 and 100
-                    # Only original tweets + retweets (no replies)
+                    "max_results": min(max(max_per_user, 5), 100),
                     "exclude": "replies",
                     "tweet.fields": "created_at,author_id,text,public_metrics,lang,referenced_tweets,attachments,note_tweet",
-                    # author_id        → expand user info
-                    # referenced_tweets.id → expand full content of retweeted tweets
-                    # attachments.media_keys → expand media (photo/video)
                     "expansions": "author_id,referenced_tweets.id,referenced_tweets.id.author_id,referenced_tweets.id.attachments.media_keys,attachments.media_keys",
                     "user.fields": "name,username,profile_image_url",
-                    # Get media URL, type, preview
                     "media.fields": "type,url,preview_image_url,variants",
                 }
 
-                sid = since_ids.get(username.lower())
+                sid = since_ids.get(uname_lower)
                 if sid:
                     params["since_id"] = sid
 
                 response = self._make_request("GET", f"/users/{uid}/tweets", params=params)
 
                 tweets = response.get("data", [])
-                
+
                 # Slice the list if user wants fewer than 5 tweets
                 if tweets and max_per_user < 5:
                     tweets = tweets[:max_per_user]
@@ -288,7 +273,6 @@ class XApiClient:
                         users_map[u["id"]] = u
 
                 # Build a map of referenced (retweeted/quoted) tweet full content
-                # key: tweet_id → full tweet object from includes.tweets
                 if includes and "tweets" in includes:
                     for ref_t in includes["tweets"]:
                         users_map[f"__tweet_{ref_t['id']}"] = ref_t
@@ -300,7 +284,7 @@ class XApiClient:
 
                 # Track newest tweet ID for dedup next time
                 if tweets:
-                    new_since_ids[username.lower()] = tweets[0]["id"]
+                    new_since_ids[uname_lower] = tweets[0]["id"]
 
                 all_tweets.extend(tweets)
 
@@ -325,9 +309,6 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
     """
     Convert list of tweets to plain text for AI summarization.
     Resolves full retweet content and appends media URLs.
-
-    Returns:
-        str: All tweets as formatted text block
     """
     if not tweets:
         return ""
@@ -343,10 +324,7 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
         created = created_raw
         if created_raw:
             try:
-                # Convert "2026-03-23T12:10:01.000Z" to datetime
-                from datetime import datetime, timedelta
                 dt = datetime.strptime(created_raw, "%Y-%m-%dT%H:%M:%S.%fZ")
-                # Add 7 hours for UTC+7
                 dt_utc7 = dt + timedelta(hours=7)
                 created = dt_utc7.strftime("%d/%m/%Y %H:%M:%S UTC+7")
             except Exception:
@@ -355,8 +333,7 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
         metrics = tweet.get("public_metrics", {})
         likes = metrics.get("like_count", 0)
 
-        # ── Resolve full text ──────────────────────────────────────
-        # If note_tweet exists, prefer it (supports > 280 chars)
+        # ── Resolve full text ──
         if tweet.get("note_tweet"):
             text = tweet["note_tweet"].get("text", tweet.get("text", ""))
         else:
@@ -372,21 +349,16 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
             elif ref.get("type") == "quoted":
                 qt_of = ref["id"]
 
-        rt_label = ""
         if rt_of and users_map:
             full_rt = users_map.get(f"__tweet_{rt_of}")
             if full_rt:
-                # Get original author name
                 orig_author_id = full_rt.get("author_id", "")
                 orig_author = "@" + (users_map.get(orig_author_id, {}).get("username", "unknown"))
-                # Prefer note_tweet for long posts
                 if full_rt.get("note_tweet"):
                     full_text = full_rt["note_tweet"].get("text", full_rt.get("text", ""))
                 else:
                     full_text = full_rt.get("text", "")
-                text = f"[RT của {orig_author} (ID: {rt_of})]: {full_text}"
-                rt_label = f" (RT @{orig_author_id})"
-                # Map attachments from original tweet to the wrapper tweet
+                text = f"[RT cua {orig_author} (ID: {rt_of})]: {full_text}"
                 if "attachments" in full_rt:
                     tweet["attachments"] = full_rt["attachments"]
 
@@ -396,12 +368,11 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
                 orig_author_id = full_qt.get("author_id", "")
                 orig_author = "@" + (users_map.get(orig_author_id, {}).get("username", "unknown"))
                 qt_text = full_qt.get("text", "")
-                text += f"\n  [Trích dẫn {orig_author} (ID: {qt_of})]: {qt_text}"
-                # Map attachments from quoted tweet if wrapper doesn't have its own
+                text += f"\n  [Trich dan {orig_author} (ID: {qt_of})]: {qt_text}"
                 if "attachments" in full_qt and "attachments" not in tweet:
                     tweet["attachments"] = full_qt["attachments"]
 
-        # ── Media URLs ─────────────────────────────────────────────
+        # ── Media URLs ──
         media_urls = []
         attachments = tweet.get("attachments", {})
         for mk in (attachments.get("media_keys") or []):
@@ -409,7 +380,6 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
             if media_obj:
                 mtype = media_obj.get("type", "media")
                 url = media_obj.get("url") or media_obj.get("preview_image_url", "")
-                # For video, pick the highest bitrate variant
                 if mtype == "video" and media_obj.get("variants"):
                     video_variants = [
                         v for v in media_obj["variants"]
@@ -432,50 +402,35 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
 
 
 # ─────────────────────────────────────────────────
-# Helper Functions
+# Helper Functions (used by main.py CLI)
 # ─────────────────────────────────────────────────
 
 def format_tweet(tweet: dict, users_map: dict = None) -> str:
-    """
-    Format 1 tweet thành chuỗi text dễ đọc.
-    
-    Args:
-        tweet: Tweet data từ API
-        users_map: Dict mapping author_id → user info
-        
-    Returns:
-        str: Tweet đã format đẹp
-    """
+    """Format 1 tweet thành chuỗi text dễ đọc (CLI only)."""
     author_id = tweet.get("author_id", "")
     text = tweet.get("text", "")
     created_at = tweet.get("created_at", "")
     metrics = tweet.get("public_metrics", {})
-    
-    # Tìm tên tác giả
+
     author_name = "Unknown"
     author_username = ""
     if users_map and author_id in users_map:
         author_name = users_map[author_id].get("name", "Unknown")
         author_username = users_map[author_id].get("username", "")
 
-    # Format thời gian
     time_str = ""
     if created_at:
         try:
             dt = datetime.fromisoformat(created_at.replace("Z", "+00:00"))
-            # Chuyển sang giờ Việt Nam (UTC+7)
-            from datetime import timedelta
             dt_vn = dt + timedelta(hours=7)
             time_str = dt_vn.strftime("%d/%m/%Y %H:%M")
         except Exception:
             time_str = created_at
 
-    # Format metrics
     likes = metrics.get("like_count", 0)
     retweets = metrics.get("retweet_count", 0)
     replies = metrics.get("reply_count", 0)
 
-    # Kiểm tra retweet
     is_retweet = False
     ref_tweets = tweet.get("referenced_tweets", [])
     if ref_tweets:
@@ -484,13 +439,11 @@ def format_tweet(tweet: dict, users_map: dict = None) -> str:
                 is_retweet = True
                 break
 
-    # Build output
     lines = []
-    prefix = "🔁 RT bởi" if is_retweet else "👤"
+    prefix = "RT boi" if is_retweet else ""
     lines.append(f"  {prefix} {author_name} (@{author_username})")
-    lines.append(f"  🕐 {time_str}")
+    lines.append(f"  {time_str}")
     lines.append(f"  {'-' * 55}")
-    # Wrap text nếu quá dài
     words = text.split()
     line_buf = "  "
     for word in words:
@@ -503,20 +456,12 @@ def format_tweet(tweet: dict, users_map: dict = None) -> str:
         lines.append(line_buf)
     lines.append(f"  {'-' * 55}")
     lines.append(f"  Likes: {likes}   Retweets: {retweets}   Replies: {replies}")
-    
+
     return "\n".join(lines)
 
 
 def build_users_map(includes: dict) -> dict:
-    """
-    Tạo dict mapping author_id → user info từ response includes.
-    
-    Args:
-        includes: "includes" section từ API response
-        
-    Returns:
-        dict: {user_id: user_data}
-    """
+    """Tạo dict mapping author_id → user info từ response includes."""
     users_map = {}
     if includes and "users" in includes:
         for user in includes["users"]:

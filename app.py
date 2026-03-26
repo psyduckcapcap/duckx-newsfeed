@@ -10,10 +10,11 @@ Usage:
 
 import os
 import sys
+import signal
 import logging
 import argparse
+import threading
 from datetime import datetime, timedelta, timezone
-from threading import Lock
 
 from flask import Flask, render_template, request, jsonify
 from apscheduler.schedulers.background import BackgroundScheduler
@@ -43,7 +44,9 @@ logger = logging.getLogger(__name__)
 # Flask app
 app = Flask(__name__)
 scheduler = BackgroundScheduler(timezone=TZ_VN)
-job_lock = Lock()
+# Per-watchlist locks: prevents same watchlist from running twice, but allows different watchlists concurrently
+_wl_locks = {}
+_wl_locks_guard = threading.Lock()
 
 
 # ─────────────────────────────────────────────────
@@ -59,10 +62,19 @@ def create_x_client():
     )
 
 
+def _get_wl_lock(wl_id: str) -> threading.Lock:
+    """Get or create a per-watchlist lock."""
+    with _wl_locks_guard:
+        if wl_id not in _wl_locks:
+            _wl_locks[wl_id] = threading.Lock()
+        return _wl_locks[wl_id]
+
+
 def run_fetch_for_watchlist(wl_id: str):
     """Run fetch cycle for a specific watchlist with detailed step tracking."""
-    if not job_lock.acquire(blocking=False):
-        logger.info("Another fetch is running, skipping...")
+    lock = _get_wl_lock(wl_id)
+    if not lock.acquire(blocking=False):
+        logger.info(f"Watchlist {wl_id} is already running, skipping...")
         return
 
     # Step tracking
@@ -229,7 +241,7 @@ def run_fetch_for_watchlist(wl_id: str):
     except Exception as e:
         logger.error(f"Fetch error: {e}", exc_info=True)
     finally:
-        job_lock.release()
+        lock.release()
 
 
 def run_all_watchlists():
@@ -401,7 +413,6 @@ def api_run_now():
     data = request.get_json() or {}
     wl_id = data.get("wl_id")
 
-    import threading
     if wl_id:
         thread = threading.Thread(target=run_fetch_for_watchlist, args=[wl_id])
     else:
@@ -443,7 +454,6 @@ def main():
     rebuild_scheduler()
 
     # Cập nhật Telegram Targets Cache ở background ngay khi mở app
-    import threading
     threading.Thread(target=config_manager.update_telegram_targets_cache, daemon=True).start()
 
     wl_count = len(config_manager.get_watchlists())
@@ -459,6 +469,14 @@ def main():
     print(f"  Timezone:   UTC+7 (Asia/Ho_Chi_Minh)")
     print("=" * 55)
     print()
+
+    def graceful_shutdown(signum, frame):
+        logger.info("Shutting down gracefully...")
+        scheduler.shutdown(wait=False)
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+    signal.signal(signal.SIGINT, graceful_shutdown)
 
     app.run(host=args.host, port=args.port, debug=False, use_reloader=False)
 

@@ -8,10 +8,12 @@ Execution logs stored separately in execution_log.json.
 import json
 import os
 import uuid
+import threading
 from datetime import datetime
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_config.json")
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "execution_log.json")
+TELEGRAM_TARGETS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "telegram_targets.json")
 
 DEFAULT_AI_PROMPT = (
     "Ban la mot tro ly AI. Hay tom tat cac tweets sau bang tieng Viet, "
@@ -26,6 +28,9 @@ DEFAULT_CONFIG = {
 }
 
 MAX_LOG_ENTRIES = 200
+
+# Thread-safe lock for all file I/O (config + log + telegram targets)
+_io_lock = threading.RLock()
 
 AI_MODELS = {
     "gemini_free_1": {"label": "Gemini Free 1", "env_key": "GEMINI_API_KEY_1"},
@@ -56,8 +61,9 @@ def load_config() -> dict:
 
 
 def save_config(config: dict):
-    # Remove execution_log if it exists in config (migration cleanup)
+    # Remove legacy keys if they exist in config (migration cleanup)
     config.pop("execution_log", None)
+    config.pop("telegram_targets_cache", None)
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=2, ensure_ascii=False)
 
@@ -143,44 +149,55 @@ def get_watchlist_by_id(wl_id: str) -> dict:
 
 
 def create_watchlist(name: str) -> dict:
-    config = load_config()
-    new_wl = {
-        "id": f"wl_{uuid.uuid4().hex[:8]}",
-        "name": name.strip(),
-        "accounts": [],
-        "schedule_times": ["08:00", "12:00", "18:00"],
-        "ai_model": "gemini_free_1",
-        "prompt": DEFAULT_AI_PROMPT,
-        "enabled": True,
-        "since_ids": {},
-        "max_posts_per_user": 10,
-        "telegram_targets": [],  # List of chat IDs to send to; empty = use global TELEGRAM_CHAT_ID
-    }
-    config["watchlists"].append(new_wl)
-    save_config(config)
-    return new_wl
+    with _io_lock:
+        config = load_config()
+        new_wl = {
+            "id": f"wl_{uuid.uuid4().hex[:8]}",
+            "name": name.strip(),
+            "accounts": [],
+            "schedule_times": ["08:00", "12:00", "18:00"],
+            "ai_model": "gemini_free_1",
+            "prompt": DEFAULT_AI_PROMPT,
+            "enabled": True,
+            "since_ids": {},
+            "max_posts_per_user": 10,
+            "telegram_targets": [],
+        }
+        config["watchlists"].append(new_wl)
+        save_config(config)
+        return new_wl
 
 
 def update_watchlist(wl_id: str, updates: dict) -> bool:
-    config = load_config()
-    for wl in config["watchlists"]:
-        if wl["id"] == wl_id:
-            allowed_fields = ["name", "schedule_times", "ai_model", "prompt", "enabled", "max_posts_per_user", "telegram_targets"]
-            for key in allowed_fields:
-                if key in updates:
-                    wl[key] = updates[key]
-            save_config(config)
-            return True
+    allowed_fields = {
+        "name": str,
+        "schedule_times": list,
+        "ai_model": str,
+        "prompt": str,
+        "enabled": bool,
+        "max_posts_per_user": int,
+        "telegram_targets": list,
+    }
+    with _io_lock:
+        config = load_config()
+        for wl in config["watchlists"]:
+            if wl["id"] == wl_id:
+                for key, expected_type in allowed_fields.items():
+                    if key in updates and isinstance(updates[key], expected_type):
+                        wl[key] = updates[key]
+                save_config(config)
+                return True
     return False
 
 
 def delete_watchlist(wl_id: str) -> bool:
-    config = load_config()
-    original_len = len(config["watchlists"])
-    config["watchlists"] = [wl for wl in config["watchlists"] if wl["id"] != wl_id]
-    if len(config["watchlists"]) < original_len:
-        save_config(config)
-        return True
+    with _io_lock:
+        config = load_config()
+        original_len = len(config["watchlists"])
+        config["watchlists"] = [wl for wl in config["watchlists"] if wl["id"] != wl_id]
+        if len(config["watchlists"]) < original_len:
+            save_config(config)
+            return True
     return False
 
 
@@ -192,27 +209,29 @@ def add_account(wl_id: str, username: str) -> bool:
     username = username.lstrip("@").strip()
     if not username:
         return False
-    config = load_config()
-    for wl in config["watchlists"]:
-        if wl["id"] == wl_id:
-            if username.lower() in [a.lower() for a in wl["accounts"]]:
-                return False
-            wl["accounts"].append(username)
-            save_config(config)
-            return True
+    with _io_lock:
+        config = load_config()
+        for wl in config["watchlists"]:
+            if wl["id"] == wl_id:
+                if username.lower() in [a.lower() for a in wl["accounts"]]:
+                    return False
+                wl["accounts"].append(username)
+                save_config(config)
+                return True
     return False
 
 
 def remove_account(wl_id: str, username: str) -> bool:
     username = username.lstrip("@").strip()
-    config = load_config()
-    for wl in config["watchlists"]:
-        if wl["id"] == wl_id:
-            new_list = [a for a in wl["accounts"] if a.lower() != username.lower()]
-            if len(new_list) < len(wl["accounts"]):
-                wl["accounts"] = new_list
-                save_config(config)
-                return True
+    with _io_lock:
+        config = load_config()
+        for wl in config["watchlists"]:
+            if wl["id"] == wl_id:
+                new_list = [a for a in wl["accounts"] if a.lower() != username.lower()]
+                if len(new_list) < len(wl["accounts"]):
+                    wl["accounts"] = new_list
+                    save_config(config)
+                    return True
     return False
 
 
@@ -228,22 +247,24 @@ def get_since_ids(wl_id: str) -> dict:
 
 
 def set_since_id(wl_id: str, username: str, tweet_id: str):
-    config = load_config()
-    for wl in config["watchlists"]:
-        if wl["id"] == wl_id:
-            if "since_ids" not in wl:
-                wl["since_ids"] = {}
-            wl["since_ids"][username.lower()] = tweet_id
-            save_config(config)
-            return
+    with _io_lock:
+        config = load_config()
+        for wl in config["watchlists"]:
+            if wl["id"] == wl_id:
+                if "since_ids" not in wl:
+                    wl["since_ids"] = {}
+                wl["since_ids"][username.lower()] = tweet_id
+                save_config(config)
+                return
 
 
 def reset_all_since_ids():
-    """Xóa tất cả since_ids ở mọi watchlist để force app lấy lại mọi thứ từ đầu."""
-    config = load_config()
-    for wl in config.get("watchlists", []):
-        wl["since_ids"] = {}
-    save_config(config)
+    """Xoa tat ca since_ids o moi watchlist de force app lay lai tu dau."""
+    with _io_lock:
+        config = load_config()
+        for wl in config.get("watchlists", []):
+            wl["since_ids"] = {}
+        save_config(config)
 
 # ─────────────────────────────────────────────
 # Telegram Targets
@@ -251,8 +272,8 @@ def reset_all_since_ids():
 
 def update_telegram_targets_cache():
     """
-    Đọc list Telegram chat IDs từ biến môi trường TELEGRAM_CHAT_ID, gọi API lấy tên thật
-    và lưu vào cache trong app_config.json để UI lấy nhanh.
+    Doc list Telegram chat IDs tu bien moi truong TELEGRAM_CHAT_ID,
+    goi API lay ten that va luu vao file telegram_targets.json de UI lay nhanh.
     """
     raw = os.getenv("TELEGRAM_CHAT_ID", "")
     target_ids = []
@@ -261,10 +282,10 @@ def update_telegram_targets_cache():
         if cid:
             target_ids.append(cid)
 
-    config = load_config()
     if not target_ids:
-        config["telegram_targets_cache"] = []
-        save_config(config)
+        with _io_lock:
+            with open(TELEGRAM_TARGETS_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f, indent=2, ensure_ascii=False)
         return
 
     from telegram_sender import get_chat_names
@@ -284,13 +305,20 @@ def update_telegram_targets_cache():
                 name = f"Personal ({cid})"
         cached_targets.append({"id": cid, "name": name})
 
-    config["telegram_targets_cache"] = cached_targets
-    save_config(config)
+    with _io_lock:
+        with open(TELEGRAM_TARGETS_FILE, "w", encoding="utf-8") as f:
+            json.dump(cached_targets, f, indent=2, ensure_ascii=False)
 
 def get_cached_telegram_targets() -> list:
-    """Trả về list các Telegram targets lấy từ cache trong file json."""
-    config = load_config()
-    return config.get("telegram_targets_cache", [])
+    """Tra ve list cac Telegram targets tu file telegram_targets.json."""
+    with _io_lock:
+        if not os.path.exists(TELEGRAM_TARGETS_FILE):
+            return []
+        try:
+            with open(TELEGRAM_TARGETS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return []
 
 
 # ─────────────────────────────────────────────
@@ -312,12 +340,6 @@ def record_execution(
     ai_summary: str = "",
 ):
     """Record a detailed execution entry."""
-    # Increment total_fetches
-    config = load_config()
-    config["total_fetches"] = config.get("total_fetches", 0) + 1
-    save_config(config)
-
-    # Save log entry
     entry = {
         "id": f"exec_{uuid.uuid4().hex[:8]}",
         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -343,39 +365,43 @@ def record_execution(
         "ai_summary": ai_summary[:5000],   # Cap at 5k chars
     }
 
-    log = _load_log()
-    log.insert(0, entry)
-    log = log[:MAX_LOG_ENTRIES]
-    _save_log(log)
+    with _io_lock:
+        log = _load_log()
+        log.insert(0, entry)
+        log = log[:MAX_LOG_ENTRIES]
+        _save_log(log)
 
+
+_migrated = False
 
 def get_execution_log() -> list:
     """Get execution log (runs migration on first call if needed)."""
-    _migrate_log_from_config()
+    global _migrated
+    if not _migrated:
+        _migrate_log_from_config()
+        _migrated = True
     return _load_log()
 
 
 def delete_execution_log(index: int = None):
-    """
-    Xóa log ở vị trí `index`.
-    Nếu index=None, xóa toàn bộ log.
-    """
-    if index is None:
-        _save_log([])
-        return
-    log = _load_log()
-    if 0 <= index < len(log):
-        log.pop(index)
-        _save_log(log)
+    """Xoa log o vi tri `index`. Neu index=None, xoa toan bo log."""
+    with _io_lock:
+        if index is None:
+            _save_log([])
+            return
+        log = _load_log()
+        if 0 <= index < len(log):
+            log.pop(index)
+            _save_log(log)
 
 def delete_multiple_execution_logs(indices: list):
-    """Xóa nhiều log một lúc theo danh sách index."""
-    log = _load_log()
-    # Delete from highest index to lowest to avoid shifting issues
-    indices = sorted([i for i in indices if 0 <= i < len(log)], reverse=True)
-    for i in indices:
-        log.pop(i)
-    _save_log(log)
+    """Xoa nhieu log mot luc theo danh sach index."""
+    with _io_lock:
+        log = _load_log()
+        indices = sorted([i for i in indices if 0 <= i < len(log)], reverse=True)
+        for i in indices:
+            log.pop(i)
+        _save_log(log)
 
 
 

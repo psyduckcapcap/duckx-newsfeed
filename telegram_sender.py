@@ -7,17 +7,14 @@ Su dung Telegram Bot API de gui ban tom tat.
 import os
 import requests
 import re
-from dotenv import load_dotenv
-
-# Load .env
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+from concurrent.futures import ThreadPoolExecutor
 
 TELEGRAM_API = "https://api.telegram.org"
 MAX_MESSAGE_LENGTH = 4096
 
 
 def get_telegram_config() -> dict:
-    """Get Telegram bot token and chat ID from .env"""
+    """Get Telegram bot token and chat ID from env."""
     return {
         "bot_token": os.getenv("TELEGRAM_BOT_TOKEN", ""),
         "chat_id": os.getenv("TELEGRAM_CHAT_ID", ""),
@@ -29,46 +26,34 @@ def escape_telegram_markdown(text: str) -> str:
     Sàng lọc và chèn ký tự \\ để ngăn Telegram nuốt thẻ định dạng (Markdown Legacy).
     Vẫn bảo toàn cấu trúc *in đậm* và _in nghiêng_.
     """
-
     # Escape ký tự '_' và '*' nếu nằm giữa 2 chữ cái/số (như username @cz_binance)
     text = re.sub(r'(?<=\w)_(?=\w)', r'\_', text)
     text = re.sub(r'(?<=\w)\*(?=\w)', r'\*', text)
-    
     return text
 
 
-def send_message(text: str, parse_mode: str = "Markdown") -> dict:
+def _send_to_chats(text: str, chat_ids: list, bot_token: str, parse_mode: str = "Markdown") -> dict:
     """
-    Gui tin nhan den Telegram chat.
-
-    Args:
-        text: Noi dung tin nhan
-        parse_mode: "Markdown" hoac "HTML"
+    Core send logic: chunk message and send to each chat ID with Markdown retry fallback.
 
     Returns:
         dict: {"success": bool, "message": str}
     """
+    if not bot_token:
+        return {"success": False, "message": "TELEGRAM_BOT_TOKEN chua duoc cau hinh"}
+    if not chat_ids:
+        return {"success": False, "message": "Khong co chat ID nao"}
+
     if parse_mode == "Markdown":
         text = escape_telegram_markdown(text)
 
-    config = get_telegram_config()
-
-    if not config["bot_token"]:
-        return {"success": False, "message": "TELEGRAM_BOT_TOKEN chua duoc cau hinh"}
-    if not config["chat_id"]:
-        return {"success": False, "message": "TELEGRAM_CHAT_ID chua duoc cau hinh"}
-
-    # Ho trinh gui nhieu group cach nhau bang dau phay
-    chat_ids = [cid.strip() for cid in config["chat_id"].split(",") if cid.strip()]
-
-    # Chia nho tin nhan neu qua dai (Telegram limit: 4096 chars)
     chunks = split_message(text)
     total_sent = 0
     errors = []
 
     for chat_id in chat_ids:
         for chunk in chunks:
-            url = f"{TELEGRAM_API}/bot{config['bot_token']}/sendMessage"
+            url = f"{TELEGRAM_API}/bot{bot_token}/sendMessage"
             payload = {
                 "chat_id": chat_id,
                 "text": chunk,
@@ -105,66 +90,19 @@ def send_message(text: str, parse_mode: str = "Markdown") -> dict:
     }
 
 
+def send_message(text: str, parse_mode: str = "Markdown") -> dict:
+    """Gui tin nhan den tat ca Telegram chats trong TELEGRAM_CHAT_ID."""
+    config = get_telegram_config()
+    if not config["chat_id"]:
+        return {"success": False, "message": "TELEGRAM_CHAT_ID chua duoc cau hinh"}
+    chat_ids = [cid.strip() for cid in config["chat_id"].split(",") if cid.strip()]
+    return _send_to_chats(text, chat_ids, config["bot_token"], parse_mode)
+
+
 def send_message_to_targets(text: str, target_ids: list, parse_mode: str = "Markdown") -> dict:
-    """
-    Gui tin nhan den danh sach chat IDs cu the (per-watchlist).
-
-    Args:
-        text: Noi dung tin nhan
-        target_ids: List cac chat ID strings
-        parse_mode: "Markdown" hoac "HTML"
-
-    Returns:
-        dict: {"success": bool, "message": str}
-    """
-    if parse_mode == "Markdown":
-        text = escape_telegram_markdown(text)
-
+    """Gui tin nhan den danh sach chat IDs cu the (per-watchlist)."""
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    if not bot_token:
-        return {"success": False, "message": "TELEGRAM_BOT_TOKEN chua duoc cau hinh"}
-    if not target_ids:
-        return {"success": False, "message": "Khong co Telegram target nao duoc chon"}
-
-    chunks = split_message(text)
-    total_sent = 0
-    errors = []
-
-    for chat_id in target_ids:
-        for chunk in chunks:
-            url = f"{TELEGRAM_API}/bot{bot_token}/sendMessage"
-            payload = {
-                "chat_id": chat_id,
-                "text": chunk,
-                "parse_mode": parse_mode,
-                "disable_web_page_preview": True,
-            }
-            try:
-                response = requests.post(url, json=payload, timeout=10)
-                if response.status_code == 200:
-                    total_sent += 1
-                else:
-                    error_data = response.json()
-                    error_desc = error_data.get("description", "Unknown error")
-                    if "can't parse" in error_desc.lower():
-                        payload["parse_mode"] = ""
-                        retry = requests.post(url, json=payload, timeout=10)
-                        if retry.status_code == 200:
-                            total_sent += 1
-                        else:
-                            errors.append(f"Chat {chat_id}: {error_desc}")
-                    else:
-                        errors.append(f"Chat {chat_id} (HTTP {response.status_code}): {error_desc}")
-            except Exception as e:
-                errors.append(f"Chat {chat_id} Exception: {str(e)}")
-
-    if errors:
-        return {"success": False, "message": " | ".join(errors)}
-
-    return {
-        "success": True,
-        "message": f"Da gui thanh cong {total_sent} tin nhan den {len(target_ids)} chats",
-    }
+    return _send_to_chats(text, target_ids, bot_token, parse_mode)
 
 
 def split_message(text: str) -> list:
@@ -197,12 +135,7 @@ def split_message(text: str) -> list:
 
 
 def test_connection() -> dict:
-    """
-    Test ket noi Telegram bot.
-
-    Returns:
-        dict: {"success": bool, "bot_name": str}
-    """
+    """Test ket noi Telegram bot."""
     config = get_telegram_config()
     if not config["bot_token"]:
         return {"success": False, "bot_name": "", "message": "TELEGRAM_BOT_TOKEN chua cau hinh"}
@@ -225,16 +158,13 @@ def test_connection() -> dict:
 
 
 def get_chat_names(chat_ids: list) -> dict:
-    """
-    Lấy tên chat thật từ Telegram API.
-    """
+    """Lay ten chat that tu Telegram API."""
     config = get_telegram_config()
     token = config.get("bot_token")
     if not token or not chat_ids:
         return {}
 
     names = {}
-    from concurrent.futures import ThreadPoolExecutor
 
     def fetch_name(cid):
         url = f"{TELEGRAM_API}/bot{token}/getChat"

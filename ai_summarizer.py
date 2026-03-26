@@ -6,18 +6,15 @@ Supports 4 Gemini models (3 free + 1 paid), each with separate API key.
 Model: gemini-3-flash-preview (Free tier: text in/out only)
 
 Optimized for Gemini 3 API:
-  - thinking_level="low" → giảm token, tăng tốc (summarization không cần reasoning sâu)
+  - thinking_budget=0 → tắt thinking, tiết kiệm token (summarization không cần reasoning)
   - Temperature giữ mặc định 1.0 (Gemini 3 khuyến nghị, tránh lặp/giảm chất lượng)
   - Cache client theo API key để tránh tạo lại mỗi request
 """
 
 import os
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 from config_manager import AI_MODELS
-
-load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 GEMINI_MODEL = "gemini-3-flash-preview"
 
@@ -63,7 +60,7 @@ def summarize_with_gemini(tweets_text: str, prompt: str, api_key: str) -> str:
             config=types.GenerateContentConfig(
                 max_output_tokens=2048,
                 thinking_config=types.ThinkingConfig(
-                    thinking_level="low",
+                    thinking_budget=0,
                 ),
             ),
         )

@@ -243,11 +243,9 @@
                 const m = await api('/api/ai-models');
                 aiModels = m.models || [];
             }
-            // Load telegram targets for dropdown
-            if (!window._tgTargets) {
-                const tgData = await api('/api/telegram-targets');
-                window._tgTargets = tgData.targets || [];
-            }
+            // Refresh telegram targets each time settings load
+            const tgData = await api('/api/telegram-targets');
+            window._tgTargets = tgData.targets || [];
             const data = await api('/api/watchlists');
             const wls = data.watchlists || [];
             const container = document.getElementById('watchlists-container');
@@ -265,7 +263,7 @@
             ).join('');
 
             const accounts = (wl.accounts || []).map(a =>
-                `<span class="tag">@${a} <button class="tag-remove" onclick="removeAccount('${wl.id}','${a}')">&times;</button></span>`
+                `<span class="tag">@${esc(a)} <button class="tag-remove" onclick="removeAccount('${wl.id}','${esc(a)}')">&times;</button></span>`
             ).join('');
 
             const times = (wl.schedule_times || []).map(t =>
@@ -276,11 +274,11 @@
     <div class="wl-card ${wl.enabled ? '' : 'disabled'}">
         <div class="wl-card-header">
             <div class="wl-card-title">
-                <strong>${wl.name}</strong>
+                <strong>${esc(wl.name)}</strong>
                 <span class="wl-card-count">${wl.accounts.length} accounts</span>
             </div>
             <div class="wl-card-actions">
-                <button class="btn btn-sm btn-secondary" onclick="openRenameModal('${wl.id}','${wl.name.replace(/'/g, "\\'")}')">✏️ Rename</button>
+                <button class="btn btn-sm btn-secondary" onclick="openRenameModal('${wl.id}', this.closest('.wl-card').querySelector('.wl-card-title strong').textContent)">✏️ Rename</button>
                 <button class="btn btn-sm btn-primary" onclick="runWatchlist('${wl.id}')">&#x25B6; Run</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteWatchlist('${wl.id}')">Delete</button>
             </div>
@@ -312,14 +310,14 @@
             <div class="wl-section">
                 <label>Telegram send to</label>
                 <div class="tags-row" id="tg-tags-${wl.id}">${(wl.telegram_targets || []).length === 0
-                    ? '<span class="empty-inline">None selected — sends to all (global config)</span>'
+                    ? '<span class="empty-inline">None selected — send to all Telegram IDs.</span>'
                     : (wl.telegram_targets || []).map(tid => {
                         const found = (window._tgTargets || []).find(t => t.id === tid);
                         const label = found ? found.name : tid;
                         return `<span class="tag tg-tag">&#x1F4F1; ${label} <button class="tag-remove" onclick="removeTgTarget('${wl.id}','${tid}')">&times;</button></span>`;
                     }).join('')
                 }</div>
-                <div class="inline-add">
+                <div class="inline-add" style="max-width:50%">
                     <select id="tg-select-${wl.id}" class="tg-select">
                         <option value="">-- Chọn Telegram ID --</option>
                         ${(window._tgTargets || []).map(t =>
@@ -328,7 +326,7 @@
                     </select>
                     <button class="btn btn-sm btn-secondary" onclick="addTgTarget('${wl.id}')">+</button>
                 </div>
-                <div class="field-hint">Chọn ID riêng cho watchlist này. Để trống = dùng global config</div>
+                <div class="field-hint">Chọn Telegram ID để gửi tin riêng cho watchlist này. Không chọn = send to all.</div>
             </div>
 
             <!-- Schedule -->
@@ -344,7 +342,7 @@
             <!-- AI Model -->
             <div class="wl-section">
                 <label>AI Model</label>
-                <select onchange="updateWatchlist('${wl.id}', {ai_model: this.value})">
+                <select style="max-width:50%" onchange="updateWatchlist('${wl.id}', {ai_model: this.value})">
                     ${modelOptions}
                 </select>
             </div>
