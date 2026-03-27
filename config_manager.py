@@ -16,10 +16,15 @@ LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "execution_l
 TELEGRAM_TARGETS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "telegram_targets.json")
 
 DEFAULT_AI_PROMPT = (
-    "Ban la mot tro ly AI. Hay tom tat cac tweets sau bang tieng Viet, "
-    "nhom theo chu de. Voi moi chu de, viet 2-3 cau tom tat ngan gon. "
-    "Neu co tin quan trong hoac dot pha, danh dau bang [QUAN TRONG]. "
-    "Cuoi cung, liet ke top 3 tweets dang chu y nhat."
+    "Bạn là một chuyên gia tổng hợp tin tức. Nhiệm vụ của bạn là tóm tắt các bài đăng Twitter (X) về chủ đề: [tên chủ đề].\n\n"
+    "Yêu cầu về nội dung:\n"
+    "1. Tổng hợp thông tin cốt lõi, loại bỏ các nội dung không liên quan, chi tiết thừa, lời cảm ơn, link hoặc hashtag không quan trọng.\n"
+    "2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n"
+    "3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\n"
+    "Yêu cầu về định dạng (markdown):\n"
+    "- CHỈ sử dụng IN HOA, **in đậm**, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n"
+    "- TUYỆT ĐỐI không sử dụng các cú pháp markdown khác, không dùng table, không dùng tiêu đề kiểu #, ##, ###.\n\n"
+    "Phong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn."
 )
 
 DEFAULT_CONFIG = {

@@ -1,7 +1,11 @@
 # --- Secrets ---
 .env
 start.sh
+restart.log
 telegram_targets.json
+
+# --- Get TG ID Tool ---
+.get-tg-id-tool/
 
 # --- Python cache ---
 __pycache__/
@@ -20,3 +24,4 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+pyrightconfig.json
