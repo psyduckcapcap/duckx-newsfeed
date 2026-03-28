@@ -66,6 +66,7 @@
                     <div class="stat-card">
                         <div class="stat-label">Total Fetches</div>
                         <div class="stat-value" id="stat-fetches">0</div>
+                        <div class="stat-sub"><span id="stat-total-tweets">0</span> tweets</div>
                     </div>
                     <div class="stat-card stat-card-success">
                         <div class="stat-label">Success Rate</div>
@@ -86,6 +87,14 @@
                         <div class="stat-value" id="stat-jobs">0</div>
                         <div class="stat-sub">scheduled</div>
                     </div>
+                </div>
+
+                <div class="section-header" style="margin-top: 1.75rem; margin-bottom: 0.75rem;">
+                    <h2 style="font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-secondary); font-weight: 600;">Active Jobs Schedule</h2>
+                    <span id="jobs-count-badge" style="display:none; font-size: 0.72rem; font-weight: 600; color: var(--accent); background: rgba(79,143,247,0.12); border: 1px solid rgba(79,143,247,0.22); border-radius: 20px; padding: 0.15rem 0.55rem;"></span>
+                </div>
+                <div id="active-jobs-list" class="list-container" style="gap: 0.45rem;">
+                    <p class="empty-msg">No active jobs scheduled.</p>
                 </div>
             </div>
 
@@ -206,12 +215,47 @@
             document.getElementById('stat-wl').textContent = stats.watchlist_count || 0;
             document.getElementById('stat-accounts').textContent = stats.total_accounts || 0;
             document.getElementById('stat-fetches').textContent = stats.total_fetches || 0;
+            
+            const totalTweetsSpan = document.getElementById('stat-total-tweets');
+            if(totalTweetsSpan) totalTweetsSpan.textContent = stats.total_fetched_tweets || 0;
+            
             document.getElementById('stat-rate').textContent = (stats.success_rate || 0) + '%';
             document.getElementById('stat-success').textContent = stats.success_count || 0;
             document.getElementById('stat-errors').textContent = stats.error_count || 0;
             document.getElementById('stat-last').textContent = stats.last_run || '--';
             document.getElementById('stat-next').textContent = stats.next_run || '--';
             document.getElementById('stat-jobs').textContent = stats.active_jobs || 0;
+            
+            // Render active jobs list
+            const jobsList = stats.active_jobs_list || [];
+            const jobsContainer = document.getElementById('active-jobs-list');
+            const countBadge = document.getElementById('jobs-count-badge');
+            if (jobsContainer) {
+                if (!jobsList.length) {
+                    jobsContainer.innerHTML = '<p class="empty-msg">No active jobs scheduled.</p>';
+                    if (countBadge) countBadge.style.display = 'none';
+                } else {
+                    if (countBadge) { countBadge.textContent = jobsList.length + ' jobs'; countBadge.style.display = 'inline'; }
+                    jobsContainer.innerHTML = jobsList.map(job => `
+                        <div class="job-card">
+                            <div class="job-time">${esc(job.time)}</div>
+                            <div class="job-info">
+                                <div class="job-wl-name">${esc(job.wl_name)}</div>
+                                <div class="job-meta">
+                                    <div class="job-meta-item">
+                                        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                        ${job.accounts_count} accounts
+                                    </div>
+                                    <div class="job-meta-item">
+                                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.19-.08-.05-.19-.02-.27 0-.12.03-1.96 1.25-5.54 3.67-.52.35-.99.53-1.42.52-.47-.01-1.37-.26-2.03-.48-.82-.27-1.47-.42-1.42-.88.03-.24.29-.48.79-.74 3.08-1.34 5.14-2.23 6.18-2.66 2.95-1.22 3.56-1.43 3.96-1.44.09 0 .28.02.41.1.11.08.15.2.16.32.01.1-.01.23-.03.35z"/></svg>
+                                        ${job.tg_targets_count} Telegram target(s)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
         }
 
         // ─── Settings / Watchlists ───
@@ -254,10 +298,10 @@
                 container.innerHTML = '<p class="empty-msg">No watchlists yet. Create one above.</p>';
                 return;
             }
-            container.innerHTML = wls.map(wl => renderWatchlistCard(wl)).join('');
+            container.innerHTML = wls.map((wl, i) => renderWatchlistCard(wl, i + 1)).join('');
         }
 
-        function renderWatchlistCard(wl) {
+        function renderWatchlistCard(wl, index) {
             const modelOptions = aiModels.map(m =>
                 `<option value="${m.id}" ${m.id === wl.ai_model ? 'selected' : ''} ${!m.configured ? 'disabled' : ''}>${m.label}${m.configured ? '' : ' (no key)'}</option>`
             ).join('');
@@ -274,7 +318,7 @@
     <div class="wl-card ${wl.enabled ? '' : 'disabled'}">
         <div class="wl-card-header">
             <div class="wl-card-title">
-                <strong>${esc(wl.name)}</strong>
+                <strong><span class="wl-index">${index}.</span> ${esc(wl.name)}</strong>
                 <span class="wl-card-count">${wl.accounts.length} accounts</span>
             </div>
             <div class="wl-card-actions">
@@ -334,7 +378,9 @@
                 <label>Schedule (UTC+7)</label>
                 <div class="tags-row">${times || '<span class="empty-inline">No times set</span>'}</div>
                 <div class="inline-add">
-                    <input type="time" id="time-${wl.id}">
+                    <input type="text" id="time-${wl.id}" maxlength="5" placeholder="HH:MM"
+                        oninput="timeAutoFormat(this)"
+                        onkeypress="if(event.key==='Enter') addTime('${wl.id}')">
                     <button class="btn btn-sm btn-secondary" onclick="addTime('${wl.id}')">+</button>
                 </div>
             </div>
@@ -407,10 +453,21 @@
             loadSettings();
         }
 
+        function timeAutoFormat(el) {
+            let v = el.value.replace(/\D/g, ''); // chỉ giữ số
+            if (v.length > 4) v = v.slice(0, 4);
+            if (v.length >= 3) {
+                v = v.slice(0, 2) + ':' + v.slice(2);
+            }
+            el.value = v;
+        }
+
         async function addTime(wlId) {
             const input = document.getElementById('time-' + wlId);
-            const time = input.value;
-            if (!time) { showToast('Please select a time', 'error'); return; }
+            const time = input.value.trim();
+            if (!/^\d{2}:\d{2}$/.test(time)) { showToast('Nhập đúng định dạng HH:MM', 'error'); return; }
+            const [h, m] = time.split(':').map(Number);
+            if (h > 23 || m > 59) { showToast('Giờ không hợp lệ', 'error'); return; }
             const res = await api('/api/watchlists');
             const wl = (res.watchlists || []).find(w => w.id === wlId);
             if (!wl) return;
@@ -419,6 +476,8 @@
             times.push(time);
             times.sort();
             await updateWatchlist(wlId, { schedule_times: times });
+            input.value = '';
+            input.focus();
         }
 
         async function removeTime(wlId, time) {
@@ -602,7 +661,14 @@
 
         async function runAll() {
             showToast('Running all watchlists...', 'info');
-            await api('/api/run-now', 'POST');
+            console.log('[runAll] Sending POST /api/run-now');
+            const result = await api('/api/run-now', 'POST', {});
+            console.log('[runAll] Response:', result);
+            if (result && result.success) {
+                showToast('Batch job started! (30s between watchlists)', 'success');
+            } else if (result && result.message) {
+                showToast('Error: ' + result.message, 'error');
+            }
             setTimeout(loadDashboard, 8000);
         }
 

@@ -22,7 +22,7 @@ DEFAULT_AI_PROMPT = (
     "2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n"
     "3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\n"
     "Yêu cầu về định dạng (markdown):\n"
-    "- CHỈ sử dụng IN HOA, **in đậm**, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n"
+    "- Sử dụng IN HOA, **in đậm**, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n"
     "- TUYỆT ĐỐI không sử dụng các cú pháp markdown khác, không dùng table, không dùng tiêu đề kiểu #, ##, ###.\n\n"
     "Phong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn."
 )
@@ -430,12 +430,18 @@ def get_dashboard_stats() -> dict:
             for step in ("fetch", "ai", "telegram")
         )
     )
+    
+    total_fetched_tweets = sum(
+        e.get("steps", {}).get("fetch", {}).get("tweet_count", 0) for e in log
+    )
+    
     last_run = log[0]["time"] if log else "--"
 
     return {
         "watchlist_count": len(watchlists),
         "total_accounts": total_accounts,
         "total_fetches": total,  # Fetch from logs dynamic size
+        "total_fetched_tweets": total_fetched_tweets,
         "success_count": success_count,
         "error_count": error_count,
         "success_rate": round(success_count / total * 100) if total > 0 else 0,

@@ -13,6 +13,7 @@ import sys
 import signal
 import logging
 import argparse
+import time
 import threading
 from datetime import datetime, timedelta, timezone
 
@@ -171,7 +172,8 @@ def run_fetch_for_watchlist(wl_id: str):
             )
             return
 
-        # ── Step 2: AI Summarize ──
+        # ── Step 2: AI Summarize (with retry) ──
+        ai_failed = False
         try:
             ai_summary_text = summarize_tweets(
                 raw_tweets_text,
@@ -180,46 +182,83 @@ def run_fetch_for_watchlist(wl_id: str):
             )
 
             if ai_summary_text.startswith("[ERROR]"):
-                ai_status = "error"
-                ai_detail = ai_summary_text[:300]
-                logger.error(f"  AI Error: {ai_summary_text}")
-                # Fallback: send raw tweets
-                ai_summary_text = f"[AI Error - Raw tweets]\n\n{raw_tweets_text[:3500]}"
+                logger.warning(f"  AI Error (1st attempt): {ai_summary_text}")
+                logger.info("  Retrying AI in 10s...")
+                time.sleep(10)
+                ai_summary_text = summarize_tweets(
+                    raw_tweets_text,
+                    wl.get("prompt", ""),
+                    ai_model_used,
+                )
+
+                if ai_summary_text.startswith("[ERROR]"):
+                    ai_status = "error"
+                    ai_detail = ai_summary_text[:300]
+                    ai_failed = True
+                    logger.error(f"  AI Error (2nd attempt): {ai_summary_text}")
+                else:
+                    ai_status = "success"
+                    ai_detail = f"Summarized {fetch_count} tweets (succeeded on retry)"
+                    logger.info(f"  AI Summary OK on retry ({len(ai_summary_text)} chars)")
             else:
                 ai_status = "success"
                 ai_detail = f"Summarized {fetch_count} tweets"
                 logger.info(f"  AI Summary OK ({len(ai_summary_text)} chars)")
 
         except Exception as e:
-            ai_status = "error"
-            ai_detail = str(e)[:300]
-            ai_summary_text = f"[AI Error - Raw tweets]\n\n{raw_tweets_text[:3500]}"
-            logger.error(f"  AI exception: {e}")
+            logger.warning(f"  AI exception (1st attempt): {e}")
+            logger.info("  Retrying AI in 10s...")
+            time.sleep(10)
+            try:
+                ai_summary_text = summarize_tweets(
+                    raw_tweets_text,
+                    wl.get("prompt", ""),
+                    ai_model_used,
+                )
+                if ai_summary_text.startswith("[ERROR]"):
+                    ai_status = "error"
+                    ai_detail = ai_summary_text[:300]
+                    ai_failed = True
+                    logger.error(f"  AI Error (2nd attempt): {ai_summary_text}")
+                else:
+                    ai_status = "success"
+                    ai_detail = f"Summarized {fetch_count} tweets (succeeded on retry)"
+                    logger.info(f"  AI Summary OK on retry ({len(ai_summary_text)} chars)")
+            except Exception as e2:
+                ai_status = "error"
+                ai_detail = str(e2)[:300]
+                ai_failed = True
+                logger.error(f"  AI exception (2nd attempt): {e2}")
 
-        # ── Step 3: Send to Telegram ──
-        try:
-            now_vn = datetime.now(TZ_VN).strftime("%d/%m/%Y %H:%M")
-            header = f"📋 *DuckX Newsfeed: {wl_name}*\n⏰ {now_vn}\n📊 {fetch_count} tweets\n\n"
-            # Use watchlist-specific targets if configured, otherwise fall back to global
-            wl_targets = wl.get("telegram_targets", [])
-            if wl_targets:
-                tg_result = send_message_to_targets(header + ai_summary_text, wl_targets)
-            else:
-                tg_result = send_message(header + ai_summary_text)
+        # ── Step 3: Send to Telegram (skip if AI failed) ──
+        if ai_failed:
+            tg_status = "skipped"
+            tg_detail = "Skipped: AI summarization failed after retry"
+            logger.info(f"  Telegram skipped (AI failed)")
+        else:
+            try:
+                now_vn = datetime.now(TZ_VN).strftime("%d/%m/%Y %H:%M")
+                header = f"📋 **DuckX Newsfeed: {wl_name}**\n⏰ {now_vn}\n📊 {fetch_count} tweets\n\n"
+                # Use watchlist-specific targets if configured, otherwise fall back to global
+                wl_targets = wl.get("telegram_targets", [])
+                if wl_targets:
+                    tg_result = send_message_to_targets(header + ai_summary_text, wl_targets)
+                else:
+                    tg_result = send_message(header + ai_summary_text)
 
-            if tg_result["success"]:
-                tg_status = "success"
-                tg_detail = "Message sent"
-                logger.info(f"  Telegram sent OK")
-            else:
+                if tg_result["success"]:
+                    tg_status = "success"
+                    tg_detail = "Message sent"
+                    logger.info(f"  Telegram sent OK")
+                else:
+                    tg_status = "error"
+                    tg_detail = tg_result.get("message", "Unknown error")[:300]
+                    logger.error(f"  Telegram error: {tg_detail}")
+
+            except Exception as e:
                 tg_status = "error"
-                tg_detail = tg_result.get("message", "Unknown error")[:300]
-                logger.error(f"  Telegram error: {tg_detail}")
-
-        except Exception as e:
-            tg_status = "error"
-            tg_detail = str(e)[:300]
-            logger.error(f"  Telegram exception: {e}")
+                tg_detail = str(e)[:300]
+                logger.error(f"  Telegram exception: {e}")
 
         # ── Record everything ──
         config_manager.record_execution(
@@ -245,10 +284,21 @@ def run_fetch_for_watchlist(wl_id: str):
 
 
 def run_all_watchlists():
-    """Run fetch for all enabled watchlists."""
-    for wl in config_manager.get_watchlists():
-        if wl.get("enabled", True):
-            run_fetch_for_watchlist(wl["id"])
+    """Run fetch for all enabled watchlists (batch mode with 30s delay to avoid Gemini rate limits)."""
+    enabled_wls = [wl for wl in config_manager.get_watchlists() if wl.get("enabled", True)]
+    total = len(enabled_wls)
+    logger.info(f"=== RUN ALL: {total} watchlists (batch mode, 30s interval) ===")
+
+    for i, wl in enumerate(enabled_wls):
+        logger.info(f"[{i + 1}/{total}] Running watchlist: {wl['name']}")
+        run_fetch_for_watchlist(wl["id"])
+
+        # Wait 30s between watchlists to avoid Gemini free tier rate limit (5 req/min)
+        if i < total - 1:
+            logger.info(f"Waiting 30s before next watchlist (rate limit protection)...")
+            time.sleep(30)
+
+    logger.info(f"=== RUN ALL COMPLETE ===")
 
 
 # ─────────────────────────────────────────────────
@@ -309,6 +359,11 @@ def api_stats():
     stats = config_manager.get_dashboard_stats()
     # Next run info
     jobs = [j for j in scheduler.get_jobs() if j.id.startswith("wl_")]
+    active_jobs_list = []
+    
+    # Calculate telegram target total outside loop
+    all_tg_targets = len(config_manager.get_cached_telegram_targets())
+
     if jobs:
         next_runs = [j.next_run_time for j in jobs if j.next_run_time]
         if next_runs:
@@ -318,8 +373,32 @@ def api_stats():
             stats["next_run"] = "N/A"
     else:
         stats["next_run"] = "No jobs"
+        
+    for wl in config_manager.get_watchlists():
+        if not wl.get("enabled", True):
+            continue
+            
+        acc_count = len(wl.get("accounts", []))
+        wl_targets = wl.get("telegram_targets", [])
+        # If empty means all targets
+        tg_count = len(wl_targets) if wl_targets else all_tg_targets
+        
+        for t in wl.get("schedule_times", []):
+            active_jobs_list.append({
+                "time": t,
+                "wl_name": wl.get("name", "Unknown"),
+                "accounts_count": acc_count,
+                "tg_targets_count": tg_count
+            })
+            
+    # Sort by time
+    active_jobs_list.sort(key=lambda x: x["time"])
+    
     stats["active_jobs"] = len(jobs)
+    stats["active_jobs_list"] = active_jobs_list
+    
     return jsonify(stats)
+
 
 
 @app.route("/api/execution-log", methods=["GET"])
@@ -410,14 +489,18 @@ def api_remove_account(wl_id, username):
 
 @app.route("/api/run-now", methods=["POST"])
 def api_run_now():
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     wl_id = data.get("wl_id")
 
     if wl_id:
-        thread = threading.Thread(target=run_fetch_for_watchlist, args=[wl_id])
+        logger.info(f"[api_run_now] Triggered single watchlist: {wl_id}")
+        thread = threading.Thread(target=run_fetch_for_watchlist, args=[wl_id], daemon=False)
     else:
-        thread = threading.Thread(target=run_all_watchlists)
+        logger.info("[api_run_now] Triggered RUN ALL (batch mode)")
+        thread = threading.Thread(target=run_all_watchlists, daemon=False)
+    thread.daemon = False
     thread.start()
+    logger.info(f"[api_run_now] Thread started: {thread.name}")
     return jsonify({"success": True, "message": "Dang chay..."})
 
 

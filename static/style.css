@@ -58,14 +58,14 @@ body {
 }
 
 .logo-img {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 4.5rem;
+    height: 4.5rem;
     border-radius: 50%;
     object-fit: cover;
 }
 
 .header h1 {
-    font-size: 1.25rem;
+    font-size: 2.5rem;
     font-weight: 600;
 }
 
@@ -347,6 +347,79 @@ textarea {
 .badge-err { color: var(--danger); }
 .badge-skip { color: var(--text-muted); }
 
+/* ─── Active Jobs ─── */
+.job-card {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: calc(var(--radius) - 2px);
+    padding: 0.7rem 1rem;
+    transition: all 0.2s;
+}
+
+.job-card:hover {
+    background: var(--bg-card-hover);
+    border-color: var(--accent);
+    border-left-color: var(--accent);
+}
+
+.job-time {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--accent);
+    background: rgba(79, 143, 247, 0.1);
+    border: 1px solid rgba(79, 143, 247, 0.22);
+    border-radius: 6px;
+    padding: 0.3rem 0.55rem;
+    min-width: 58px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+}
+
+.job-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.job-wl-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.job-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.job-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.job-meta-item svg {
+    width: 12px;
+    height: 12px;
+    fill: var(--text-secondary);
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
 /* ─── Watchlist Cards ─── */
 .watchlists-container {
     display: flex;
@@ -374,24 +447,35 @@ textarea {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.85rem 1rem;
+    padding: 0.8rem 1rem;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
 }
 
 .wl-card-title {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.15rem;
 }
 
 .wl-card-title strong {
-    font-size: 0.95rem;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.01em;
+}
+
+.wl-index {
+    color: rgba(79, 143, 247, 0.45);
+    font-weight: 600;
+    margin-right: 0.1em;
 }
 
 .wl-card-count {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
+    letter-spacing: 0.02em;
 }
 
 .wl-card-actions {
