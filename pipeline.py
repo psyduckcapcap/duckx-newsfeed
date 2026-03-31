@@ -10,6 +10,7 @@ import time
 import threading
 import logging
 from datetime import datetime
+from typing import Optional
 
 import pytz
 
@@ -27,7 +28,7 @@ _wl_locks: dict[str, threading.Lock] = {}
 _wl_locks_guard = threading.Lock()
 
 # Cached X API client — credentials are constant per process lifetime
-_x_client: XApiClient | None = None
+_x_client: Optional[XApiClient] = None
 _x_client_lock = threading.Lock()
 
 
