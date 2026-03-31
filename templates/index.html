@@ -334,7 +334,7 @@
                 <label>Accounts</label>
                 <div class="tags-row">${accounts || '<span class="empty-inline">No accounts</span>'}</div>
                 <div class="inline-add">
-                    <input type="text" id="acc-${wl.id}" placeholder="username"
+                    <input type="text" id="acc-${wl.id}" placeholder="@username or username"
                         onkeypress="if(event.key==='Enter') addAccount('${wl.id}')">
                     <button class="btn btn-sm btn-secondary" onclick="addAccount('${wl.id}')">+</button>
                 </div>
@@ -441,7 +441,7 @@
 
         async function addAccount(wlId) {
             const input = document.getElementById('acc-' + wlId);
-            const username = input.value.trim().replace('@', '');
+            const username = input.value.trim().replace(/^@+/, '');
             if (!username) return;
             const data = await api(`/api/watchlists/${wlId}/accounts`, 'POST', { username });
             showToast(data.message, data.success ? 'success' : 'error');

@@ -5,6 +5,7 @@ restart.log
 telegram_targets.json
 app_config.json
 execution_log.json
+note_update.md
 
 # --- Get TG ID Tool ---
 .get-tg-id-tool/

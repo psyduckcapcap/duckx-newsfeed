@@ -332,6 +332,7 @@ def rebuild_scheduler():
                     args=[wl["id"]],
                     name=f"{wl['name']} @ {h:02d}:{m:02d}",
                     replace_existing=True,
+                    misfire_grace_time=900,
                 )
             except Exception as e:
                 logger.error(f"Failed to schedule {wl['name']} @ {t}: {e}")
