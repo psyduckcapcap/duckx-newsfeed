@@ -6,10 +6,14 @@ Execution logs stored separately in execution_log.json.
 """
 
 import json
+import logging
 import os
 import uuid
 import threading
 from datetime import datetime
+from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_config.json")
 LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "execution_log.json")
@@ -134,8 +138,8 @@ def _migrate_log_from_config():
             config.pop("execution_log", None)
             with open(CONFIG_FILE, "w", encoding="utf-8") as f:
                 json.dump(config, f, indent=2, ensure_ascii=False)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"Log migration failed (non-critical): {e}")
 
 
 # ─────────────────────────────────────────────
@@ -146,7 +150,7 @@ def get_watchlists() -> list:
     return load_config().get("watchlists", [])
 
 
-def get_watchlist_by_id(wl_id: str) -> dict:
+def get_watchlist_by_id(wl_id: str) -> Optional[dict]:
     for wl in get_watchlists():
         if wl["id"] == wl_id:
             return wl
@@ -280,12 +284,11 @@ def update_telegram_targets_cache():
     Doc list Telegram chat IDs tu bien moi truong TELEGRAM_CHAT_ID,
     goi API lay ten that va luu vao file telegram_targets.json de UI lay nhanh.
     """
+    # Import here to avoid circular imports at module load time
+    from telegram_sender import get_chat_names  # noqa: PLC0415
+
     raw = os.getenv("TELEGRAM_CHAT_ID", "")
-    target_ids = []
-    for cid in raw.split(","):
-        cid = cid.strip()
-        if cid:
-            target_ids.append(cid)
+    target_ids = [cid.strip() for cid in raw.split(",") if cid.strip()]
 
     if not target_ids:
         with _io_lock:
@@ -293,7 +296,6 @@ def update_telegram_targets_cache():
                 json.dump([], f, indent=2, ensure_ascii=False)
         return
 
-    from telegram_sender import get_chat_names
     names_map = get_chat_names(target_ids)
 
     cached_targets = []
@@ -301,13 +303,12 @@ def update_telegram_targets_cache():
         real_name = names_map.get(cid)
         if real_name:
             name = f"{real_name} ({cid})"
+        elif cid.startswith("-100"):
+            name = f"Channel/Group ({cid})"
+        elif cid.startswith("-"):
+            name = f"Group ({cid})"
         else:
-            if cid.startswith("-100"):
-                name = f"Channel/Group ({cid})"
-            elif cid.startswith("-"):
-                name = f"Group ({cid})"
-            else:
-                name = f"Personal ({cid})"
+            name = f"Personal ({cid})"
         cached_targets.append({"id": cid, "name": name})
 
     with _io_lock:
@@ -411,11 +412,12 @@ def delete_multiple_execution_logs(indices: list):
 
 
 def get_dashboard_stats() -> dict:
-    config = load_config()
+    with _io_lock:
+        config = load_config()
+        log = _load_log()
+
     watchlists = config.get("watchlists", [])
     total_accounts = sum(len(wl.get("accounts", [])) for wl in watchlists)
-
-    log = _load_log()
     total = len(log)
     success_count = sum(
         1 for e in log

@@ -324,7 +324,8 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
         created = created_raw
         if created_raw:
             try:
-                dt = datetime.strptime(created_raw, "%Y-%m-%dT%H:%M:%S.%fZ")
+                # X API returns ISO 8601 with or without microseconds, always in UTC (Z)
+                dt = datetime.fromisoformat(created_raw.replace("Z", "+00:00"))
                 dt_utc7 = dt + timedelta(hours=7)
                 created = dt_utc7.strftime("%d/%m/%Y %H:%M:%S UTC+7")
             except Exception:
@@ -349,6 +350,9 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
             elif ref.get("type") == "quoted":
                 qt_of = ref["id"]
 
+        # Local copy of attachments to avoid mutating the original tweet dict
+        tweet_attachments = dict(tweet.get("attachments") or {})
+
         if rt_of and users_map:
             full_rt = users_map.get(f"__tweet_{rt_of}")
             if full_rt:
@@ -359,8 +363,8 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
                 else:
                     full_text = full_rt.get("text", "")
                 text = f"[RT cua {orig_author} (ID: {rt_of})]: {full_text}"
-                if "attachments" in full_rt:
-                    tweet["attachments"] = full_rt["attachments"]
+                if "attachments" in full_rt and not tweet_attachments:
+                    tweet_attachments = dict(full_rt["attachments"])
 
         if qt_of and users_map:
             full_qt = users_map.get(f"__tweet_{qt_of}")
@@ -369,13 +373,12 @@ def tweets_to_text(tweets: list, users_map: dict) -> str:
                 orig_author = "@" + (users_map.get(orig_author_id, {}).get("username", "unknown"))
                 qt_text = full_qt.get("text", "")
                 text += f"\n  [Trich dan {orig_author} (ID: {qt_of})]: {qt_text}"
-                if "attachments" in full_qt and "attachments" not in tweet:
-                    tweet["attachments"] = full_qt["attachments"]
+                if "attachments" in full_qt and not tweet_attachments:
+                    tweet_attachments = dict(full_qt["attachments"])
 
         # ── Media URLs ──
         media_urls = []
-        attachments = tweet.get("attachments", {})
-        for mk in (attachments.get("media_keys") or []):
+        for mk in (tweet_attachments.get("media_keys") or []):
             media_obj = users_map.get(f"__media_{mk}") if users_map else None
             if media_obj:
                 mtype = media_obj.get("type", "media")

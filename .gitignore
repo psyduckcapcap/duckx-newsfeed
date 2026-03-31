@@ -1,11 +1,26 @@
-# --- Secrets ---
+# --- Secrets & runtime data ---
 .env
-start.sh
-restart.log
-telegram_targets.json
 app_config.json
 execution_log.json
+telegram_targets.json
+
+# --- Runtime logs & scripts ---
+start.sh
+restart.log
 note_update.md
+
+# --- AI tool configs (personal, not project) ---
+.claude/
+.opencode/
+AGENTS.md
+CLAUDE.md
+
+# --- AI generated plans/reports (ephemeral session artifacts) ---
+plans/reports/
+
+# --- Tool artifacts ---
+release-manifest.json
+.repomixignore
 
 # --- Get TG ID Tool ---
 .get-tg-id-tool/
@@ -15,6 +30,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.egg-info/
 
 # --- Virtual environments ---
 venv/

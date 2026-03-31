@@ -6,6 +6,7 @@ Markdown Legacy: *bold*, _italic_, [link](url), `code`
 """
 
 import os
+import threading
 import requests
 import re
 from concurrent.futures import ThreadPoolExecutor
@@ -175,7 +176,7 @@ def split_message(text: str) -> list:
 
 def _send_to_chats(text: str, chat_ids: list, bot_token: str, parse_mode: str = "Markdown") -> dict:
     """
-    Core send logic: convert markdown, chunk message, send to each chat ID.
+    Core send logic: convert markdown, chunk message, send to chat IDs in parallel.
     Fallback: neu Markdown Legacy that bai -> thu lai voi plain text.
 
     Returns:
@@ -196,23 +197,28 @@ def _send_to_chats(text: str, chat_ids: list, bot_token: str, parse_mode: str = 
         formatted_text = text
 
     chunks = split_message(formatted_text)
+    url = f"{TELEGRAM_API}/bot{bot_token}/sendMessage"
+
+    # Thread-safe result accumulators
+    _lock = threading.Lock()
     total_sent = 0
     errors = []
 
-    for chat_id in chat_ids:
+    def _send_to_chat(chat_id: str):
+        nonlocal total_sent
+        # Send chunks sequentially within a single chat (preserve message ordering)
         for chunk in chunks:
-            url = f"{TELEGRAM_API}/bot{bot_token}/sendMessage"
             payload = {
                 "chat_id": chat_id,
                 "text": chunk,
                 "parse_mode": parse_mode,
                 "disable_web_page_preview": True,
             }
-
             try:
                 response = requests.post(url, json=payload, timeout=10)
                 if response.status_code == 200:
-                    total_sent += 1
+                    with _lock:
+                        total_sent += 1
                 else:
                     error_data = response.json()
                     error_desc = error_data.get("description", "Unknown error")
@@ -220,18 +226,25 @@ def _send_to_chats(text: str, chat_ids: list, bot_token: str, parse_mode: str = 
                     # Fallback: neu Markdown parse that bai -> chuyen sang plain text
                     if "can't parse" in error_desc.lower():
                         plaintext_chunk = convert_markdown_to_plaintext(chunk)
-                        payload["text"] = plaintext_chunk
-                        payload["parse_mode"] = ""
-                        retry = requests.post(url, json=payload, timeout=10)
+                        retry_payload = dict(payload, text=plaintext_chunk, parse_mode="")
+                        retry = requests.post(url, json=retry_payload, timeout=10)
                         if retry.status_code == 200:
-                            total_sent += 1
+                            with _lock:
+                                total_sent += 1
                         else:
                             retry_error = retry.json().get("description", "Unknown error")
-                            errors.append(f"Chat {chat_id}: Markdown & plaintext failed: {retry_error}")
+                            with _lock:
+                                errors.append(f"Chat {chat_id}: Markdown & plaintext failed: {retry_error}")
                     else:
-                        errors.append(f"Chat {chat_id} (HTTP {response.status_code}): {error_desc}")
+                        with _lock:
+                            errors.append(f"Chat {chat_id} (HTTP {response.status_code}): {error_desc}")
             except Exception as e:
-                errors.append(f"Chat {chat_id} Exception: {str(e)}")
+                with _lock:
+                    errors.append(f"Chat {chat_id} Exception: {str(e)}")
+
+    # Send to all chats in parallel (up to 5 workers)
+    with ThreadPoolExecutor(max_workers=min(5, len(chat_ids))) as executor:
+        executor.map(_send_to_chat, chat_ids)
 
     if errors:
         return {"success": False, "message": " | ".join(errors)}
