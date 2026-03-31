@@ -15,8 +15,8 @@ note_update.md
 AGENTS.md
 CLAUDE.md
 
-# --- AI generated plans/reports (ephemeral session artifacts) ---
-plans/reports/
+# --- AI generated plans (ephemeral session artifacts) ---
+plans/
 
 # --- Tool artifacts ---
 release-manifest.json
