@@ -324,11 +324,14 @@
     <div class="wl-card ${wl.enabled ? '' : 'disabled'}">
         <div class="wl-card-header">
             <div class="wl-card-title">
-                <strong><span class="wl-index">${index}.</span> ${esc(wl.name)}</strong>
+                <div style="display:flex;align-items:center;gap:0.3rem">
+                    <strong><span class="wl-index">${index}.</span> ${esc(wl.name)}</strong>
+                    <button class="btn-icon" data-name="${esc(wl.name)}" title="Rename" onclick="openRenameModal('${wl.id}', this.dataset.name)">✏️</button>
+                </div>
                 <span class="wl-card-count">${wl.accounts.length} accounts</span>
             </div>
             <div class="wl-card-actions">
-                <button class="btn btn-sm btn-secondary" onclick="openRenameModal('${wl.id}', this.closest('.wl-card').querySelector('.wl-card-title strong').textContent)">✏️ Rename</button>
+                <button class="btn btn-sm btn-secondary" onclick="duplicateWatchlist('${wl.id}')">⧉ Duplicate</button>
                 <button class="btn btn-sm btn-primary" onclick="runWatchlist('${wl.id}')">&#x25B6; Run</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteWatchlist('${wl.id}')">Delete</button>
             </div>
@@ -407,6 +410,12 @@
             </div>
         </div>
     </div>`;
+        }
+
+        async function duplicateWatchlist(id) {
+            const data = await api(`/api/watchlists/${id}/duplicate`, 'POST');
+            showToast(data.success ? 'Watchlist duplicated' : (data.message || 'Duplicate failed'), data.success ? 'success' : 'error');
+            if (data.success) loadSettings();
         }
 
         async function deleteWatchlist(id) {

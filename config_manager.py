@@ -5,6 +5,7 @@ Manages per-watchlist configuration in app_config.json.
 Execution logs stored separately in execution_log.json.
 """
 
+import copy
 import json
 import logging
 import os
@@ -197,6 +198,21 @@ def update_watchlist(wl_id: str, updates: dict) -> bool:
                 save_config(config)
                 return True
     return False
+
+
+def duplicate_watchlist(wl_id: str) -> Optional[dict]:
+    with _io_lock:
+        config = load_config()
+        source = next((wl for wl in config["watchlists"] if wl["id"] == wl_id), None)
+        if not source:
+            return None
+        new_wl = copy.deepcopy(source)
+        new_wl["id"] = f"wl_{uuid.uuid4().hex[:8]}"
+        new_wl["name"] = f"{source['name']} (Copy)"
+        new_wl["since_ids"] = {}
+        config["watchlists"].append(new_wl)
+        save_config(config)
+        return new_wl
 
 
 def delete_watchlist(wl_id: str) -> bool:

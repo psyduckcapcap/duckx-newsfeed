@@ -115,6 +115,15 @@ def api_update_watchlist(wl_id):
     return jsonify({"success": False, "message": "Watchlist khong ton tai"})
 
 
+@bp.route("/api/watchlists/<wl_id>/duplicate", methods=["POST"])
+def api_duplicate_watchlist(wl_id):
+    wl = config_manager.duplicate_watchlist(wl_id)
+    if wl:
+        rebuild_scheduler()
+        return jsonify({"success": True, "watchlist": wl})
+    return jsonify({"success": False, "message": "Watchlist khong ton tai"})
+
+
 @bp.route("/api/watchlists/<wl_id>", methods=["DELETE"])
 def api_delete_watchlist(wl_id):
     if config_manager.delete_watchlist(wl_id):
