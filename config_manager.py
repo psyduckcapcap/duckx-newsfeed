@@ -21,15 +21,7 @@ LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "execution_l
 TELEGRAM_TARGETS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "telegram_targets.json")
 
 DEFAULT_AI_PROMPT = (
-    "Bạn là một chuyên gia tổng hợp tin tức. Nhiệm vụ của bạn là tóm tắt các bài đăng Twitter (X) về chủ đề: [tên chủ đề].\n\n"
-    "Yêu cầu về nội dung:\n"
-    "1. Tổng hợp thông tin cốt lõi, loại bỏ các nội dung không liên quan, chi tiết thừa, lời cảm ơn, link hoặc hashtag không quan trọng.\n"
-    "2. Ưu tiên các con số, dữ liệu thống kê và các mốc sự kiện quan trọng.\n"
-    "3. Dẫn nguồn: cuối mỗi ý tóm tắt, ghi rõ ID account của tin Twitter gốc, ví dụ: @elonmusk, @cz_binance.\n\n"
-    "Yêu cầu về định dạng (markdown):\n"
-    "- Sử dụng IN HOA, **in đậm**, _in nghiêng_, emoji cho việc trình bày, nhấn mạnh, làm nổi bật từ khóa hoặc số liệu quan trọng.\n"
-    "- TUYỆT ĐỐI không sử dụng các cú pháp markdown khác, không dùng table, không dùng tiêu đề kiểu #, ##, ###.\n\n"
-    "Phong cách: Trực tiếp, chuyên nghiệp, không lời chào/kết, không cảm ơn."
+    "Bạn là chuyên gia phân tích tin tức tài chính và công nghệ. Tóm tắt các tweet dưới đây về Thị trường Crypto & Công nghệ Blockchain bằng tiếng Việt.\n\nXỬ LÝ NỘI DUNG:\n1. Chỉ giữ thông tin có giá trị tin tức thực sự: giá/khối lượng giao dịch, on-chain data, regulatory news, protocol update, phát biểu của KOL có ảnh hưởng thị trường.\n2. Gộp các tweet cùng chủ đề thành một ý duy nhất, không lặp thông tin.\n3. Loại bỏ hoàn toàn: quảng cáo/shill coin, lời cảm ơn, hashtag, link, nhận định chung chung không có số liệu.\n4. Đổi múi giờ sang UTC+7 khi đề cập thời gian cụ thể.\n5. Nếu không có nội dung đáng chú ý: chỉ viết \"Không có tin đáng chú ý.\"\n\nĐỊNH DẠNG ĐẦU RA:\n- Breaking news đặt đầu tiên, đánh dấu 🚀 **BREAKING NEWS** (nếu có).\n- Mỗi ý bắt đầu bằng từ khóa chủ đề IN HOA hoặc **in đậm**, kèm emoji phù hợp.\n- Dùng **in đậm** để làm nổi bật tên coin, tổ chức, con số quan trọng.\n- Dẫn nguồn inline ngay sau thông tin: @account.\n- TUYỆT ĐỐI KHÔNG dùng: table, heading (#/##/###)."
 )
 
 DEFAULT_CONFIG = {
