@@ -216,7 +216,7 @@ AI_MODELS = {
 - `_get_api_key(model_id)` → Resolve model ID (e.g., "gemini_free_1") to env var
 - `summarize_with_gemini(tweets_text, prompt, api_key)` → Call Gemini API
   - Uses `google-genai` SDK (official Google GenAI SDK)
-  - Model: `gemini-2.0-flash` (latest)
+  - Model: `gemini-3-flash-preview`
   - Thinking disabled (thinking_budget=0)
   - Temperature: default 1.0
 - `summarize_tweets(tweets_text, prompt, ai_model)` → Route to correct API key, retry once on 5xx
@@ -233,7 +233,7 @@ AI_MODELS = {
 **Gemini Model Configuration:**
 - Free tier: up to ~50 requests/min (use 3 keys to distribute load)
 - Paid tier: higher quotas
-- Model: `gemini-2.0-flash` (latest flash model)
+- Model: `gemini-3-flash-preview`
 - Model only supports text input/output (no images, files)
 
 ---
