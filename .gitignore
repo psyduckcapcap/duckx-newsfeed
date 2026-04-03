@@ -1,5 +1,7 @@
 # --- Secrets & runtime data ---
 .env
+app_config.json
+execution_log.json
 telegram_targets.json
 
 # --- Runtime logs & scripts ---
