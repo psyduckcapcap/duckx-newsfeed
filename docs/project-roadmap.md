@@ -3,7 +3,7 @@
 ## Current Status
 
 **Version:** 1.0.0 (Production-Ready)
-**Last Updated:** 2026-03-31
+**Last Updated:** 2026-04-03
 **Maintenance Mode:** Active
 
 ### Completion Metrics
@@ -215,18 +215,21 @@
 
 ---
 
-### Phase 8: Documentation ✓ COMPLETE
+### Phase 8: Documentation & Testing Setup ✓ COMPLETE
 **Status:** Shipped  
 **Duration:** 1 week  
-**Completion Date:** 2026-03-31
+**Completion Date:** 2026-04-03
 
 **Delivered:**
 - `README.md` — Installation, setup, usage guide (Vietnamese + English)
-- `docs/project-overview-pdr.md` — High-level overview + PDR
-- `docs/codebase-summary.md` — Module inventory, LOC, functions
+- `docs/project-overview-pdr.md` — High-level overview + PDR (21 endpoints, 3 JSON files)
+- `docs/codebase-summary.md` — Module inventory, LOC, functions (11 modules, 4.5k+ LOC)
 - `docs/code-standards.md` — Naming, style, patterns
 - `docs/system-architecture.md` — Data flow, threading, deployment
 - `docs/project-roadmap.md` — This document
+- `tests/` directory — Test infrastructure setup
+- `pipeline.py` refactored as separate module (core ETL logic)
+- `routes.py` extracted as separate blueprint (21 REST endpoints)
 - Inline docstrings in all modules
 - API endpoint documentation (via code)
 

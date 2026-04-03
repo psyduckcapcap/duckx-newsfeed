@@ -131,18 +131,26 @@ TELEGRAM_CHAT_ID=123456789, -1009876543210, -1001234567890
 
 ```
 duckx-newsfeed/
-├── app.py                # Flask server + APScheduler
-├── config_manager.py     # Quản lý config & execution log (JSON)
-├── ai_summarizer.py      # Tích hợp Google Gemini API
-├── telegram_sender.py    # Gửi tin nhắn Telegram
-├── x_api.py              # X (Twitter) API v2 client
-├── main.py               # CLI tool để test X API trực tiếp
+├── app.py                    # Flask server + APScheduler (~160 LOC)
+├── pipeline.py               # Core ETL pipeline: fetch→summarize→send (~580 LOC)
+├── config_manager.py         # Quản lý config & execution log (JSON) (~700 LOC)
+├── ai_summarizer.py          # Tích hợp Google Gemini API (~100 LOC)
+├── telegram_sender.py        # Gửi tin nhắn Telegram (~390 LOC)
+├── x_api.py                  # X (Twitter) API v2 client (~750 LOC)
+├── scheduler_manager.py      # APScheduler singleton (~50 LOC)
+├── main.py                   # CLI tool để test X API (~244 LOC)
+├── routes.py                 # Flask REST API routes (21 endpoints) (~270 LOC)
 ├── templates/
-│   └── index.html        # Web UI (vanilla JS)
+│   └── index.html            # Web UI (vanilla JS) (~724 LOC)
 ├── static/
-│   └── style.css         # Dark theme CSS
-├── config.example.env    # Mẫu cấu hình
-└── requirements.txt      # Dependencies
+│   └── style.css             # Dark theme CSS (~798 LOC)
+├── tests/                    # Test directory (NEW)
+├── app_config.json           # Watchlist config (runtime)
+├── execution_log.json        # Execution history (runtime)
+├── telegram_targets.json     # Cached Telegram targets (runtime)
+├── config.example.env        # Mẫu cấu hình
+├── start.sh                  # macOS daemon management
+└── requirements.txt          # Dependencies
 ```
 
 ---

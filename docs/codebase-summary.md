@@ -6,47 +6,99 @@ Complete inventory of project files with line counts, responsibilities, and key 
 
 | File | LOC | Purpose | Key Functions |
 |------|-----|---------|----------------|
-| `app.py` | 569 | Flask HTTP server, APScheduler, REST API routes | `run_fetch_for_watchlist()`, `@app.route('/api/...')` endpoints |
-| `config_manager.py` | 449 | JSON config I/O, watchlist CRUD, execution log | `load_config()`, `save_watchlist()`, `log_execution()` |
-| `x_api.py` | 469 | X API v2 OAuth 1.0a client | `XApiClient.get_watchlist_tweets()`, `batch_lookup_users()` |
-| `telegram_sender.py` | 313 | Telegram Bot API, message formatting | `send_message_to_targets()`, `convert_markdown_to_legacy()` |
-| `ai_summarizer.py` | 96 | Gemini AI integration, model routing | `summarize_with_gemini()`, `summarize_tweets()` |
-| `main.py` | 244 | CLI tool for X API testing | `XApiClient.get_home_timeline()`, `get_me()` |
-| `templates/index.html` | 724 | Vanilla JS SPA (Dashboard, Settings, Logs) | Fetch/render API data, form submission handlers |
-| `static/style.css` | 798 | Dark theme styling | Responsive layout, tab switching, form inputs |
+| `app.py` | ~160 | Flask entry point, APScheduler init | `app.run()`, scheduler setup |
+| `pipeline.py` | ~580 | Core ETL pipeline: fetch→summarize→send | `run_fetch_for_watchlist()`, `retry_execution_steps()`, `run_all_watchlists()` |
+| `routes.py` | ~270 | Flask REST API (21 endpoints) | `GET/POST/DELETE /api/...` handlers |
+| `config_manager.py` | ~700 | JSON config I/O, watchlist CRUD, execution log | `load_config()`, `save_watchlist()`, `log_execution()`, `get_dashboard_stats()` |
+| `x_api.py` | ~750 | X API v2 OAuth 1.0a client | `XApiClient.get_watchlist_tweets()`, `batch_lookup_users()` |
+| `telegram_sender.py` | ~390 | Telegram Bot API, message formatting | `send_message_to_targets()`, `convert_markdown_to_legacy()` |
+| `ai_summarizer.py` | ~100 | Gemini AI integration, model routing | `summarize_with_gemini()`, `summarize_tweets()` |
+| `scheduler_manager.py` | ~50 | APScheduler singleton | `get_scheduler()`, scheduler config |
+| `main.py` | ~244 | CLI tool for X API testing | `XApiClient.get_home_timeline()`, `get_me()` |
+| `templates/index.html` | ~724 | Vanilla JS SPA (Dashboard, Settings, Logs) | Fetch/render API data, form submission handlers |
+| `static/style.css` | ~798 | Dark theme styling | Responsive layout, tab switching, form inputs |
 
-**Total:** ~3662 LOC (excluding test files and config examples)
+**Total:** ~4566 LOC (excluding test files and config examples)
 
 ---
 
 ## Module Descriptions
 
-### 1. `app.py` (69 LOC) — Flask Server & Scheduler
+### 1. `app.py` (~160 LOC) — Flask Entry Point & Scheduler Init
 
-**Responsibility:** HTTP API server, background job scheduling, startup.
+**Responsibility:** Flask application initialization, APScheduler setup, debug mode toggle.
 
-**Key Classes/Functions:**
-- `_get_wl_lock(wl_id)` — Get or create per-watchlist `threading.Lock()` (now in `pipeline.py`)
-- `run_fetch_for_watchlist(wl_id)` — Main pipeline: fetch → summarize → send; tracks status/detail
-- `run_watchlists_batch()` — Trigger all enabled watchlists with 30s delay between each
-- `schedule_watchlist(wl_id, times_list)` — Register CronTrigger jobs for given times (UTC+7)
-- Flask routes:
-  - `GET /api/stats` — Dashboard stats + active jobs
-  - `GET|POST|DELETE /api/watchlists` — CRUD
-  - `POST /api/watchlists/<id>/accounts` — Account management
-  - `POST /api/run-now` — Immediate execution
-  - `GET /api/execution-log` — Execution history
-
-**Thread Safety:**
-- `_wl_locks` dict with per-watchlist `threading.Lock()`
-- Prevents same watchlist running concurrently; different watchlists run in parallel
+**Key Functions:**
+- `create_app()` — Initialize Flask app with config
+- `main()` — Parse CLI arguments, start Flask + scheduler
 
 **Signal Handling:**
 - `signal.signal(signal.SIGTERM/SIGINT, ...)` → graceful shutdown on interrupt
 
 ---
 
-### 2. `config_manager.py` (449 LOC) — Configuration & Logging
+### 2. `pipeline.py` (~580 LOC) — Core ETL Pipeline
+
+**Responsibility:** Main execution pipeline: fetch tweets → summarize → send to Telegram. Retry logic with intelligent resume.
+
+**Key Classes/Functions:**
+- `get_x_client()` — Lazy-init singleton X API client (thread-safe)
+- `_get_wl_lock(wl_id)` — Get or create per-watchlist `threading.Lock()`
+- `run_fetch_for_watchlist(wl_id)` — Main 3-step pipeline executor
+  - Step 1: Fetch tweets (X API)
+  - Step 2: Summarize (Gemini)
+  - Step 3: Send to Telegram
+  - Tracks status + detail in execution log
+- `_run_fetch_with_retry()` — X API fetch with 2 retries (10s delay)
+- `_run_ai_with_retry()` — Gemini summarization with 2 retries
+- `_send_telegram_with_retry()` — Telegram send with 2 retries
+- `retry_execution_steps(exec_id)` — Intelligent retry from last failed step (resume capability)
+- `run_all_watchlists()` — Sequential execution of all enabled watchlists with 30s delay
+
+**Thread Safety:**
+- `_wl_locks` dict with per-watchlist `threading.Lock()`
+- Prevents same watchlist running concurrently; different watchlists run in parallel
+
+---
+
+### 3. `routes.py` (~270 LOC) — Flask REST API (21 Endpoints)
+
+**Responsibility:** Blueprint-based HTTP routes for Web UI. 21 total API endpoints.
+
+**Endpoint Categories:**
+
+**Dashboard & Admin:**
+- `GET /api/stats` — Dashboard stats + active jobs
+- `GET /api/execution-log` → Full execution history
+- `DELETE /api/execution-log` → Clear all logs
+- `DELETE /api/execution-log/<index>` → Delete single entry
+- `POST /api/execution-log/bulk-delete` → Bulk delete by indices
+- `POST /api/execution-log/<exec_id>/retry` → Retry from failed step
+- `POST /api/reset-sync` → Reset all since_ids
+
+**Watchlist CRUD:**
+- `GET /api/watchlists` → List all
+- `POST /api/watchlists` → Create
+- `PUT /api/watchlists/<id>` → Update
+- `DELETE /api/watchlists/<id>` → Delete
+
+**Account Management:**
+- `POST /api/watchlists/<id>/accounts` → Add account
+- `DELETE /api/watchlists/<id>/accounts/<username>` → Remove account
+- `POST /api/watchlists/<id>/refresh-user-cache` → Refresh user ID cache
+- `POST /api/watchlists/<id>/duplicate` → Duplicate watchlist
+
+**Triggers & Tests:**
+- `POST /api/run-now` → Manual trigger (all or specific watchlist)
+- `POST /api/test-telegram` → Test Telegram connection
+
+**Configuration:**
+- `GET /api/ai-models` → List AI models with key status
+- `GET /api/telegram-targets` → List Telegram targets
+
+---
+
+### 4. `config_manager.py` (~700 LOC) — Configuration & Logging
 
 **Responsibility:** JSON file I/O for config, execution logs, Telegram targets. Thread-safe with `RLock`.
 
@@ -87,7 +139,7 @@ AI_MODELS = {
 
 ---
 
-### 3. `x_api.py` (469 LOC) — X (Twitter) API v2 Client
+### 5. `x_api.py` (~750 LOC) — X (Twitter) API v2 Client
 
 **Responsibility:** OAuth 1.0a authentication, tweet fetching, user batch lookup, deduplication.
 
@@ -120,7 +172,7 @@ AI_MODELS = {
 
 ---
 
-### 4. `telegram_sender.py` (313 LOC) — Telegram Bot API
+### 6. `telegram_sender.py` (~390 LOC) — Telegram Bot API
 
 **Responsibility:** Message delivery to Telegram, Markdown formatting, message splitting.
 
@@ -155,7 +207,7 @@ AI_MODELS = {
 
 ---
 
-### 5. `ai_summarizer.py` (96 LOC) — Gemini AI Integration
+### 7. `ai_summarizer.py` (~100 LOC) — Gemini AI Integration
 
 **Responsibility:** Gemini 3 Flash Preview API calls, model routing, client caching.
 
@@ -164,9 +216,9 @@ AI_MODELS = {
 - `_get_api_key(model_id)` → Resolve model ID (e.g., "gemini_free_1") to env var
 - `summarize_with_gemini(tweets_text, prompt, api_key)` → Call Gemini API
   - Uses `google-genai` SDK (official Google GenAI SDK)
-  - Model: `gemini-3-flash-preview`
+  - Model: `gemini-2.0-flash` (latest)
   - Thinking disabled (thinking_budget=0)
-  - Temperature: default 1.0 (recommended for Gemini 3)
+  - Temperature: default 1.0
 - `summarize_tweets(tweets_text, prompt, ai_model)` → Route to correct API key, retry once on 5xx
 
 **Client Caching:**
@@ -181,11 +233,22 @@ AI_MODELS = {
 **Gemini Model Configuration:**
 - Free tier: up to ~50 requests/min (use 3 keys to distribute load)
 - Paid tier: higher quotas
+- Model: `gemini-2.0-flash` (latest flash model)
 - Model only supports text input/output (no images, files)
 
 ---
 
-### 6. `main.py` (244 LOC) — CLI Tool
+### 8. `scheduler_manager.py` (~50 LOC) — APScheduler Singleton
+
+**Responsibility:** Singleton pattern for APScheduler instance. Centralized scheduler management.
+
+**Key Functions:**
+- `get_scheduler()` → Return or create APScheduler instance
+- Scheduler config: background executor, misfire grace time (900s), UTC+7 timezone
+
+---
+
+### 9. `main.py` (~244 LOC) — CLI Tool
 
 **Responsibility:** Command-line testing of X API without scheduler/web UI.
 
@@ -210,7 +273,7 @@ python main.py --user elonmusk    # @elonmusk's tweets
 
 ---
 
-### 7. `templates/index.html` (724 LOC) — Web UI (Vanilla JS SPA)
+### 10. `templates/index.html` (~724 LOC) — Web UI (Vanilla JS SPA)
 
 **Responsibility:** Single-page application with Dashboard, Settings, Execution Log tabs.
 
@@ -261,7 +324,7 @@ python main.py --user elonmusk    # @elonmusk's tweets
 
 ---
 
-### 8. `static/style.css` (798 LOC) — Dark Theme Styling
+### 11. `static/style.css` (~798 LOC) — Dark Theme Styling
 
 **Responsibility:** Responsive layout, form styling, dark theme, animations.
 

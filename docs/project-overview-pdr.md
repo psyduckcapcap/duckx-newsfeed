@@ -17,13 +17,14 @@ Built with a clean REST API backend (Flask) and lightweight vanilla JavaScript f
 | Create/edit watchlists | DONE | Web UI allows creating groups of Twitter accounts (e.g., "Crypto News", "AI Tech") |
 | Schedule automation | DONE | APScheduler runs jobs at fixed UTC+7 times; multiple times per day per watchlist |
 | Fetch tweets | DONE | X API v2 client fetches tweets from watched accounts; deduplicates via since_id per user |
-| Summarize with AI | DONE | Gemini 3 Flash Preview integration; supports 3 free keys + 1 paid key |
+| Summarize with AI | DONE | Gemini 2.0 Flash integration; supports 3 free keys + 1 paid key |
 | Send to Telegram | DONE | Sends summaries to multiple Telegram chat IDs; Markdown Legacy formatting with plaintext fallback |
 | Web dashboard | DONE | Single-page app (vanilla JS): Dashboard (stats), Settings (CRUD), Execution Log (history) |
 | Deduplication | DONE | since_id tracking per user per watchlist; cleared on reset |
 | Execution log | DONE | Detailed per-run logs stored in JSON; tracks fetch count, AI model used, success/error states |
-| Rate-limit handling | DONE | Automatic retry on X API 429/5xx; 30s delay between watchlists (Gemini free tier protection) |
+| Rate-limit handling | DONE | Automatic retry on X API 429/5xx; 2 retries per step with 10s delay |
 | CLI testing | DONE | main.py tool for direct X API testing without scheduler |
+| Retry with resume | DONE | `retry_execution_steps()` can resume from last failed step (fetch/AI/Telegram) |
 
 ---
 
@@ -62,10 +63,12 @@ User Web UI → Flask REST API
 
 | Component | Module | Purpose |
 |-----------|--------|---------|
-| **Flask Server** | `app.py` | HTTP routes (GET/POST/DELETE), CORS, JSON responses |
-| **Scheduler** | `app.py` | APScheduler background scheduler, per-watchlist locking |
+| **Flask Server** | `app.py` | Application initialization, APScheduler setup |
+| **REST API Routes** | `routes.py` | 21 HTTP endpoints (GET/POST/DELETE), CORS, JSON responses |
+| **ETL Pipeline** | `pipeline.py` | Core 3-step execution: fetch → summarize → send; retry logic with resume |
+| **Scheduler** | `scheduler_manager.py` | APScheduler singleton, per-watchlist locking, job management |
 | **X API Client** | `x_api.py` | OAuth 1.0a, batch user lookup, since_id tracking |
-| **AI Summarizer** | `ai_summarizer.py` | Gemini 3 Flash Preview, client caching, 4-model routing |
+| **AI Summarizer** | `ai_summarizer.py` | Gemini 2.0 Flash, client caching, 4-model routing |
 | **Telegram Sender** | `telegram_sender.py` | Bot API calls, Markdown Legacy conversion, message splitting |
 | **Config Manager** | `config_manager.py` | JSON file I/O (config + log + targets), thread-safe locking |
 | **Web UI** | `templates/index.html` | Vanilla JS SPA (Dashboard, Settings, Execution Log tabs) |
@@ -112,71 +115,95 @@ User Web UI → Flask REST API
 
 ---
 
-## API Routes
+## API Routes (21 Total Endpoints)
 
-### Dashboard & Admin
+### Dashboard & Admin (7 endpoints)
+- `GET /` → Web UI (SPA)
 - `GET /api/stats` → Dashboard stats + active job list
 - `GET /api/execution-log` → Full execution history
 - `DELETE /api/execution-log` → Clear all logs
 - `DELETE /api/execution-log/<index>` → Delete single entry
-- `POST /api/execution-log/bulk-delete` → Bulk delete by index list
-- `POST /api/reset-sync` → Reset all since_ids
+- `POST /api/execution-log/<exec_id>/retry` → Retry from failed step
+- `POST /api/execution-log/bulk-delete` → Bulk delete by indices
 
-### Watchlist CRUD
+### Watchlist CRUD (4 endpoints)
 - `GET /api/watchlists` → List all watchlists
 - `POST /api/watchlists` → Create new watchlist
 - `PUT /api/watchlists/<id>` → Update watchlist
 - `DELETE /api/watchlists/<id>` → Delete watchlist
 
-### Account Management
+### Account & Watchlist Management (4 endpoints)
 - `POST /api/watchlists/<id>/accounts` → Add account to watchlist
 - `DELETE /api/watchlists/<id>/accounts/<username>` → Remove account
+- `POST /api/watchlists/<id>/refresh-user-cache` → Refresh user ID cache
+- `POST /api/watchlists/<id>/duplicate` → Duplicate watchlist
 
-### Triggers & Tests
+### Triggers & Tests (2 endpoints)
 - `POST /api/run-now` → Trigger immediate run (all watchlists or specific)
 - `POST /api/test-telegram` → Test Telegram bot connection
 
-### Configuration
+### Configuration (3 endpoints)
 - `GET /api/ai-models` → List AI models with key status (present/missing)
 - `GET /api/telegram-targets` → List configured Telegram targets
+- `POST /api/reset-sync` → Reset all since_ids
 
 ---
 
 ## Data Models
 
-### Watchlist Config (per item in `app_config.json`)
+### Config File (`app_config.json`)
+Root structure:
 ```json
 {
-  "id": "wl_xxxxxxxx",
-  "name": "Crypto News",
-  "accounts": ["username1", "username2"],
-  "schedule_times": ["08:00", "12:00", "18:00"],
-  "ai_model": "gemini_free_1",
-  "prompt": "Summarize crypto news...",
-  "enabled": true,
-  "since_ids": {"username1": "1234567890", "username2": "0987654321"},
-  "max_posts_per_user": 10,
-  "telegram_targets": [123456789, -1009876543210]
+  "watchlists": [
+    {
+      "id": "wl_xxxxxxxx",
+      "name": "Crypto News",
+      "accounts": ["username1", "username2"],
+      "schedule_times": ["08:00", "12:00", "18:00"],
+      "ai_model": "gemini_free_1",
+      "prompt": "Summarize crypto news...",
+      "enabled": true,
+      "since_ids": {"username1": "1234567890", "username2": "0987654321"},
+      "max_posts_per_user": 10,
+      "telegram_targets": [123456789, -1009876543210]
+    }
+  ],
+  "total_fetches": 42
 }
 ```
 
-### Execution Log Entry
+### Execution Log (`execution_log.json`)
+Array of execution entries (max 200, auto-pruned):
 ```json
-{
-  "timestamp": "2026-03-31T14:30:00+07:00",
-  "watchlist_id": "wl_xxx",
-  "watchlist_name": "Crypto News",
-  "fetch_status": "success",
-  "fetch_detail": "Fetched 12 tweets from 2 accounts",
-  "fetch_count": 12,
-  "ai_status": "success",
-  "ai_detail": "Gemini summarization completed",
-  "ai_model_used": "gemini_free_1",
-  "tg_status": "success",
-  "tg_detail": "Sent to 2 chat IDs",
-  "raw_tweets_text": "[raw tweet text here]",
-  "ai_summary_text": "[AI summary here]"
-}
+[
+  {
+    "timestamp": "2026-03-31T14:30:00+07:00",
+    "watchlist_id": "wl_xxx",
+    "watchlist_name": "Crypto News",
+    "fetch_status": "success",
+    "fetch_detail": "Fetched 12 tweets from 2 accounts",
+    "fetch_count": 12,
+    "ai_status": "success",
+    "ai_detail": "Gemini summarization completed",
+    "ai_model_used": "gemini_free_1",
+    "tg_status": "success",
+    "tg_detail": "Sent to 2 chat IDs",
+    "raw_tweets_text": "[raw tweet text here]",
+    "ai_summary_text": "[AI summary here]"
+  }
+]
+```
+
+### Telegram Targets Cache (`telegram_targets.json`)
+Cached info for quick reference:
+```json
+[
+  {
+    "chat_id": 123456789,
+    "name": "My Channel"
+  }
+]
 ```
 
 ---
