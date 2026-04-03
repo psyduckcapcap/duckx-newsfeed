@@ -188,51 +188,77 @@ class XApiClient:
     # Watchlist - Batch fetch from multiple users
     # ─────────────────────────────────────────────
 
-    def get_watchlist_tweets(self, usernames: list, max_per_user: int = 10, since_ids: dict = None) -> dict:
+    def get_watchlist_tweets(self, usernames: list, max_per_user: int = 10, since_ids: dict = None, user_id_cache: dict = None) -> dict:
         """
         Lấy tweets mới từ nhiều users (watchlist).
-        Dùng batch user lookup để giảm API calls (N+1 thay vì 2N).
+        Dùng user_id_cache để bỏ qua batch user lookup với accounts đã biết ID
+        → tiết kiệm User: Read credits ($0.010/resource).
+        Trả về new_cache_entries để caller lưu cache.
         """
         if since_ids is None:
             since_ids = {}
+        if user_id_cache is None:
+            user_id_cache = {}
 
         all_tweets = []
         users_map = {}
         new_since_ids = {}
         errors = {}
+        new_cache_entries = {}  # Accounts fetched fresh this run (not in cache)
 
-        # ── Batch lookup user IDs (1 API call thay vì N) ──
-        uid_map = {}  # username_lower -> {id, data}
-        try:
-            batch_result = self.get_users_by_usernames(usernames)
-            for user_data in batch_result.get("data", []):
-                uname = user_data["username"].lower()
-                uid_map[uname] = user_data
-                users_map[user_data["id"]] = user_data
+        # ── Bước 1: Ưu tiên dùng cache, chỉ lookup accounts thiếu ──
+        uid_map = {}
+        missing_usernames = []
 
-            # Track users not found
-            for api_err in batch_result.get("errors", []):
-                detail = api_err.get("detail", "")
-                # Extract username from error if possible
-                resource_id = api_err.get("value", "")
-                if resource_id:
-                    errors[resource_id] = detail or "User not found"
-        except Exception as e:
-            # Fallback: nếu batch fails, thử từng user
-            logger.warning(f"Batch user lookup failed ({e}), falling back to individual lookups")
-            for username in usernames:
-                try:
-                    user_info = self.get_user_by_username(username)
-                    if "data" in user_info:
-                        user_data = user_info["data"]
-                        uid_map[username.lower()] = user_data
-                        users_map[user_data["id"]] = user_data
-                    else:
-                        errors[username] = "User not found"
-                except Exception as ue:
-                    errors[username] = str(ue)
+        for username in usernames:
+            uname_lower = username.lower()
+            cached = user_id_cache.get(uname_lower)
+            if cached and cached.get("id"):
+                uid_map[uname_lower] = cached
+                users_map[cached["id"]] = cached
+            else:
+                missing_usernames.append(username)
 
-        # ── Fetch tweets per user ──
+        # ── Bước 2: Batch lookup chỉ accounts chưa có trong cache ──
+        if missing_usernames:
+            try:
+                batch_result = self.get_users_by_usernames(missing_usernames)
+                for user_data in batch_result.get("data", []):
+                    uname = user_data["username"].lower()
+                    uid_map[uname] = user_data
+                    users_map[user_data["id"]] = user_data
+                    new_cache_entries[uname] = user_data  # trả về để caller cache
+
+                for api_err in batch_result.get("errors", []):
+                    detail = api_err.get("detail", "")
+                    resource_id = api_err.get("value", "")
+                    if resource_id:
+                        errors[resource_id] = detail or "User not found"
+            except Exception as e:
+                logger.warning(f"Batch user lookup failed ({e}), falling back to individual lookups")
+                for username in missing_usernames:
+                    try:
+                        user_info = self.get_user_by_username(username)
+                        if "data" in user_info:
+                            user_data = user_info["data"]
+                            uid_map[username.lower()] = user_data
+                            users_map[user_data["id"]] = user_data
+                            new_cache_entries[username.lower()] = user_data
+                        else:
+                            errors[username] = "User not found"
+                    except Exception as ue:
+                        errors[username] = str(ue)
+
+        # ── Bước 3: Xác định expansions cần dùng ──
+        # Khi tất cả accounts đã có trong cache: bỏ author_id expansion → 0 User: Read charges
+        # Khi có accounts mới: giữ expansion để lấy và cache user data
+        if missing_usernames:
+            expansions = "author_id,referenced_tweets.id,referenced_tweets.id.author_id,referenced_tweets.id.attachments.media_keys,attachments.media_keys"
+        else:
+            # Full cache hit: không cần author expansion, tiết kiệm User: Read credits
+            expansions = "referenced_tweets.id,referenced_tweets.id.attachments.media_keys,attachments.media_keys"
+
+        # ── Bước 4: Fetch tweets per user ──
         for username in usernames:
             uname_lower = username.lower()
             user_data = uid_map.get(uname_lower)
@@ -248,7 +274,7 @@ class XApiClient:
                     "max_results": min(max(max_per_user, 5), 100),
                     "exclude": "replies",
                     "tweet.fields": "created_at,author_id,text,public_metrics,lang,referenced_tweets,attachments,note_tweet",
-                    "expansions": "author_id,referenced_tweets.id,referenced_tweets.id.author_id,referenced_tweets.id.attachments.media_keys,attachments.media_keys",
+                    "expansions": expansions,
                     "user.fields": "name,username,profile_image_url",
                     "media.fields": "type,url,preview_image_url,variants",
                 }
@@ -302,6 +328,7 @@ class XApiClient:
             "users_map": users_map,
             "new_since_ids": new_since_ids,
             "errors": errors,
+            "new_cache_entries": new_cache_entries,  # username_lower → user_data
         }
 
 

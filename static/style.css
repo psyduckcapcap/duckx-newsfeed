@@ -233,6 +233,14 @@ textarea { resize: vertical; line-height: 1.5; }
 
 .btn-danger:hover { background: rgba(248, 113, 113, 0.1); box-shadow: var(--glow-danger); }
 
+.btn-warning {
+    background: transparent;
+    color: #f59e0b;
+    border: 1px solid #f59e0b;
+}
+
+.btn-warning:hover { background: rgba(245, 158, 11, 0.1); box-shadow: 0 0 10px rgba(245, 158, 11, 0.3); }
+
 .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.75rem; }
 
 /* ─── Lists ─── */

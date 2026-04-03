@@ -168,6 +168,7 @@
                 <div class="modal-header">
                     <h3 id="detail-title" style="margin-bottom:0; flex:1">Execution Detail</h3>
                     <div style="display:flex; gap:0.4rem; align-items:center;">
+                        <span id="detail-retry-btn"></span>
                         <button class="btn btn-sm btn-secondary" onclick="closeDetailModal()">✕</button>
                     </div>
                 </div>
@@ -332,6 +333,7 @@
             </div>
             <div class="wl-card-actions">
                 <button class="btn btn-sm btn-secondary" onclick="duplicateWatchlist('${wl.id}')">⧉ Duplicate</button>
+                <button class="btn btn-sm btn-secondary" onclick="refreshUserCache('${wl.id}')" title="Xoá cache user ID, buoc fetch tiep theo lookup lai X API">↻ Cache</button>
                 <button class="btn btn-sm btn-primary" onclick="runWatchlist('${wl.id}')">&#x25B6; Run</button>
                 <button class="btn btn-sm btn-danger" onclick="deleteWatchlist('${wl.id}')">Delete</button>
             </div>
@@ -416,6 +418,11 @@
             const data = await api(`/api/watchlists/${id}/duplicate`, 'POST');
             showToast(data.success ? 'Watchlist duplicated' : (data.message || 'Duplicate failed'), data.success ? 'success' : 'error');
             if (data.success) loadSettings();
+        }
+
+        async function refreshUserCache(id) {
+            const data = await api(`/api/watchlists/${id}/refresh-user-cache`, 'POST');
+            showToast(data.message || (data.success ? 'User cache cleared' : 'Failed'), data.success ? 'success' : 'error');
         }
 
         async function deleteWatchlist(id) {
@@ -570,6 +577,7 @@
                 const a = steps.ai || {};
                 const t = steps.telegram || {};
                 const allOk = f.status === 'success' && a.status === 'success' && t.status === 'success';
+                const hasError = f.status === 'error' || a.status === 'error' || t.status === 'error';
 
                 return `
         <div class="exec-entry ${allOk ? '' : 'exec-entry-warn'}" onclick="showExecDetail(${i})">
@@ -583,6 +591,7 @@
                     <span class="exec-step" title="AI ${a.status}">${statusBadge(a.status)} AI</span>
                     <span class="exec-step" title="Telegram ${t.status}">${statusBadge(t.status)} TG</span>
                 </div>
+                ${hasError && e.id ? `<button class="btn btn-sm btn-warning" onclick="event.stopPropagation();retryExecution('${e.id}')">↻ Retry</button>` : ''}
             </div>
         </div>`;
             }).join('');
@@ -636,7 +645,25 @@
         </details>` : ''}
         `;
 
+            const hasError = f.status === 'error' || a.status === 'error' || t.status === 'error';
+            document.getElementById('detail-retry-btn').innerHTML =
+                (hasError && e.id)
+                    ? `<button class="btn btn-sm btn-warning" onclick="retryExecution('${e.id}')">↻ Retry Failed Steps</button>`
+                    : '';
+
             document.getElementById('detail-modal').style.display = 'flex';
+        }
+
+        async function retryExecution(execId) {
+            showToast('Retrying failed steps...', 'info');
+            const data = await api(`/api/execution-log/${execId}/retry`, 'POST');
+            if (data.success) {
+                showToast('Retry started! Check log in a moment.', 'success');
+                document.getElementById('detail-modal').style.display = 'none';
+                setTimeout(loadExecLog, 8000);
+            } else {
+                showToast('Error: ' + (data.message || 'Unknown error'), 'error');
+            }
         }
 
         function closeDetailModal(ev) {

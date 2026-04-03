@@ -1,19 +1,18 @@
 """
 DuckX Newsfeed - AI Summarizer
 ===============================
-Uses the official Google GenAI SDK (google-genai).
+Uses the official Google GenAI SDK (google-genai >= 1.70, Python 3.12+).
 Supports 4 Gemini models (3 free + 1 paid), each with separate API key.
-Model: gemini-3-flash-preview (Free tier: text in/out only)
+Model: gemini-3-flash-preview (Free tier, default thinking = "high")
 
 Optimized for Gemini 3 API:
-  - thinking_budget=0 → tắt thinking, tiết kiệm token (summarization không cần reasoning)
+  - Không cần truyền thinking_config — default đã là "high" dynamic thinking
   - Temperature giữ mặc định 1.0 (Gemini 3 khuyến nghị, tránh lặp/giảm chất lượng)
   - Cache client theo API key để tránh tạo lại mỗi request
 """
 
 import os
 from google import genai
-from google.genai import types
 from config_manager import AI_MODELS
 
 GEMINI_MODEL = "gemini-3-flash-preview"
@@ -42,9 +41,10 @@ def summarize_with_gemini(tweets_text: str, prompt: str, api_key: str) -> str:
     Summarize tweets using Google GenAI SDK (Gemini 3 Flash Preview).
 
     Tối ưu theo Gemini 3 docs:
-      - thinking_level="low": đủ cho summarization, tiết kiệm token
-      - Không set temperature (dùng mặc định 1.0 theo khuyến nghị Gemini 3)
-      - Không dùng tools (Google Search, Maps) — free tier chỉ hỗ trợ text
+      - thinking: không set thinking_config → Gemini 3 Flash mặc định dùng "high" (dynamic)
+      - max_output_tokens: không set → dùng mặc định của Gemini (64k tokens)
+      - temperature: không set → mặc định 1.0 (Gemini 3 khuyến nghị)
+      - tools: không set → free tier chỉ hỗ trợ text
     """
     if not api_key:
         return "[ERROR] API Key chua duoc cau hinh cho model nay"
@@ -54,15 +54,10 @@ def summarize_with_gemini(tweets_text: str, prompt: str, api_key: str) -> str:
 
         full_prompt = f"{prompt}\n\n--- TWEETS ---\n{tweets_text}"
 
+        # Không cần truyền thinking_config — Gemini 3 Flash mặc định dùng "high" thinking
         response = client.models.generate_content(
             model=GEMINI_MODEL,
             contents=full_prompt,
-            config=types.GenerateContentConfig(
-                max_output_tokens=2048,
-                thinking_config=types.ThinkingConfig(
-                    thinking_budget=0,
-                ),
-            ),
         )
 
         if response.text:

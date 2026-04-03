@@ -419,6 +419,43 @@ def delete_multiple_execution_logs(indices: list):
 
 
 
+# ─────────────────────────────────────────────
+# User ID Cache (username → user data, persistent across runs)
+# Eliminates repeated User: Read API calls for known accounts
+# ─────────────────────────────────────────────
+
+def get_user_id_cache() -> dict:
+    """Get the user ID cache: {username_lower: {id, name, username, ...}}"""
+    return load_config().get("user_id_cache", {})
+
+
+def update_user_id_cache(entries: dict):
+    """Merge new username→user_data entries into the persistent cache."""
+    with _io_lock:
+        config = load_config()
+        cache = config.setdefault("user_id_cache", {})
+        cache.update({k.lower(): v for k, v in entries.items()})
+        save_config(config)
+
+
+def clear_user_id_cache(usernames: list = None):
+    """
+    Clear user ID cache entries.
+    usernames=None: clear entire cache.
+    usernames=[...]: clear only specified accounts.
+    """
+    with _io_lock:
+        config = load_config()
+        if usernames is None:
+            config["user_id_cache"] = {}
+        else:
+            cache = config.get("user_id_cache", {})
+            for u in usernames:
+                cache.pop(u.lower(), None)
+            config["user_id_cache"] = cache
+        save_config(config)
+
+
 def get_dashboard_stats() -> dict:
     with _io_lock:
         config = load_config()

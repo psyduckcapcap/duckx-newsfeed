@@ -10,7 +10,7 @@ import threading
 from flask import Blueprint, render_template, request, jsonify
 
 import config_manager
-from pipeline import run_fetch_for_watchlist, run_all_watchlists
+from pipeline import run_fetch_for_watchlist, run_all_watchlists, retry_execution_steps
 from scheduler_manager import scheduler, rebuild_scheduler
 from telegram_sender import test_connection
 
@@ -73,6 +73,13 @@ def api_delete_execution_entry(index):
     return jsonify({"success": True, "message": "Da xoa ban ghi"})
 
 
+@bp.route("/api/execution-log/<exec_id>/retry", methods=["POST"])
+def api_retry_execution(exec_id):
+    thread = threading.Thread(target=retry_execution_steps, args=[exec_id], daemon=False)
+    thread.start()
+    return jsonify({"success": True, "message": "Retry started..."})
+
+
 @bp.route("/api/execution-log/bulk-delete", methods=["POST"])
 def api_bulk_delete_execution_logs():
     data = request.get_json() or {}
@@ -113,6 +120,17 @@ def api_update_watchlist(wl_id):
         rebuild_scheduler()
         return jsonify({"success": True, "message": "Da cap nhat"})
     return jsonify({"success": False, "message": "Watchlist khong ton tai"})
+
+
+@bp.route("/api/watchlists/<wl_id>/refresh-user-cache", methods=["POST"])
+def api_refresh_user_cache(wl_id):
+    """Xoa cache user ID cho watchlist nay, buoc fetch lan tiep theo se lookup lai X API."""
+    wl = config_manager.get_watchlist_by_id(wl_id)
+    if not wl:
+        return jsonify({"success": False, "message": "Watchlist không tồn tại"})
+    accounts = wl.get("accounts", [])
+    config_manager.clear_user_id_cache(accounts)
+    return jsonify({"success": True, "message": f"Đã xoá cache cho {len(accounts)} accounts. Sẽ refresh lần chạy tiếp theo."})
 
 
 @bp.route("/api/watchlists/<wl_id>/duplicate", methods=["POST"])
