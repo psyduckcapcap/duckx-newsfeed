@@ -100,6 +100,7 @@ TELEGRAM_CHAT_ID=123456789, -1009876543210, -1001234567890
 | `X_ACCESS_TOKEN` | X OAuth access token |
 | `X_ACCESS_TOKEN_SECRET` | X OAuth access token secret |
 | `TELEGRAM_BOT_TOKEN` | Telegram Bot API token |
+| `TELEGRAM_ADMIN_ID` | Telegram Admin ID - nhận thông báo lỗi |
 | `TELEGRAM_CHAT_ID` | Chat IDs nhận bản tin (phân cách bằng dấu phẩy) |
 | `GEMINI_API_KEY_1` | Gemini free key #1 |
 | `GEMINI_API_KEY_2` | Gemini free key #2 |
