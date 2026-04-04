@@ -582,14 +582,14 @@
                 return `
         <div class="exec-entry ${allOk ? '' : 'exec-entry-warn'}" onclick="showExecDetail(${i})">
             <div class="exec-row">
-                <input type="checkbox" class="exec-checkbox" value="${i}" onclick="event.stopPropagation()">
+                <input type="checkbox" class="exec-checkbox" value="${e.id || i}" onclick="event.stopPropagation()">
                 <span class="exec-time">${e.time}</span>
-                <span class="exec-wl">${e.watchlist_name}</span>
+                <span class="exec-wl">${esc(e.watchlist_name)}</span>
                 <span class="exec-tweets">${f.tweet_count || 0} tweets</span>
                 <div class="exec-badges">
-                    <span class="exec-step" title="Fetch ${f.status}">${statusBadge(f.status)} Fetch</span>
-                    <span class="exec-step" title="AI ${a.status}">${statusBadge(a.status)} AI</span>
-                    <span class="exec-step" title="Telegram ${t.status}">${statusBadge(t.status)} TG</span>
+                    <span class="exec-step" title="Fetch ${esc(f.status || '')}">${statusBadge(f.status)} Fetch</span>
+                    <span class="exec-step" title="AI ${esc(a.status || '')}">${statusBadge(a.status)} AI</span>
+                    <span class="exec-step" title="Telegram ${esc(t.status || '')}">${statusBadge(t.status)} TG</span>
                 </div>
                 ${hasError && e.id ? `<button class="btn btn-sm btn-warning" onclick="event.stopPropagation();retryExecution('${e.id}')">↻ Retry</button>` : ''}
             </div>
@@ -747,8 +747,8 @@
                 return;
             }
             if (!confirm(`Xóa ${checks.length} log đã chọn?`)) return;
-            const indices = Array.from(checks).map(c => parseInt(c.value, 10));
-            const data = await api('/api/execution-log/bulk-delete', 'POST', { indices });
+            const execIds = Array.from(checks).map(c => c.value);
+            const data = await api('/api/execution-log/bulk-delete', 'POST', { exec_ids: execIds });
             if (data.success) {
                 showToast(data.message, 'success');
                 loadExecLog();

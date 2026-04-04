@@ -221,33 +221,36 @@ class XApiClient:
 
         # ── Bước 2: Batch lookup chỉ accounts chưa có trong cache ──
         if missing_usernames:
-            try:
-                batch_result = self.get_users_by_usernames(missing_usernames)
-                for user_data in batch_result.get("data", []):
-                    uname = user_data["username"].lower()
-                    uid_map[uname] = user_data
-                    users_map[user_data["id"]] = user_data
-                    new_cache_entries[uname] = user_data  # trả về để caller cache
+            BATCH_SIZE = 100
+            for chunk_start in range(0, len(missing_usernames), BATCH_SIZE):
+                chunk = missing_usernames[chunk_start:chunk_start + BATCH_SIZE]
+                try:
+                    batch_result = self.get_users_by_usernames(chunk)
+                    for user_data in batch_result.get("data", []):
+                        uname = user_data["username"].lower()
+                        uid_map[uname] = user_data
+                        users_map[user_data["id"]] = user_data
+                        new_cache_entries[uname] = user_data  # trả về để caller cache
 
-                for api_err in batch_result.get("errors", []):
-                    detail = api_err.get("detail", "")
-                    resource_id = api_err.get("value", "")
-                    if resource_id:
-                        errors[resource_id] = detail or "User not found"
-            except Exception as e:
-                logger.warning(f"Batch user lookup failed ({e}), falling back to individual lookups")
-                for username in missing_usernames:
-                    try:
-                        user_info = self.get_user_by_username(username)
-                        if "data" in user_info:
-                            user_data = user_info["data"]
-                            uid_map[username.lower()] = user_data
-                            users_map[user_data["id"]] = user_data
-                            new_cache_entries[username.lower()] = user_data
-                        else:
-                            errors[username] = "User not found"
-                    except Exception as ue:
-                        errors[username] = str(ue)
+                    for api_err in batch_result.get("errors", []):
+                        detail = api_err.get("detail", "")
+                        resource_id = api_err.get("value", "")
+                        if resource_id:
+                            errors[resource_id] = detail or "User not found"
+                except Exception as e:
+                    logger.warning(f"Batch user lookup failed for chunk {chunk_start // BATCH_SIZE + 1} ({e}), falling back to individual lookups")
+                    for username in chunk:
+                        try:
+                            user_info = self.get_user_by_username(username)
+                            if "data" in user_info:
+                                user_data = user_info["data"]
+                                uid_map[username.lower()] = user_data
+                                users_map[user_data["id"]] = user_data
+                                new_cache_entries[username.lower()] = user_data
+                            else:
+                                errors[username] = "User not found"
+                        except Exception as ue:
+                            errors[username] = str(ue)
 
         # ── Bước 3: Xác định expansions cần dùng ──
         # Khi tất cả accounts đã có trong cache: bỏ author_id expansion → 0 User: Read charges
@@ -315,7 +318,16 @@ class XApiClient:
                 all_tweets.extend(tweets)
 
             except Exception as e:
-                errors[username] = str(e)
+                err_str = str(e)
+                errors[username] = err_str
+                # Hint admin about permanent failures that waste API quota
+                if "403" in err_str or "404" in err_str or "not found" in err_str.lower():
+                    logger.warning(
+                        f"  @{username}: permanent error ({err_str[:80]}) — "
+                        f"consider removing this account from the watchlist"
+                    )
+                else:
+                    logger.warning(f"  @{username}: fetch error — {err_str[:80]}")
 
         # Sort all tweets by created_at descending (newest first)
         all_tweets.sort(

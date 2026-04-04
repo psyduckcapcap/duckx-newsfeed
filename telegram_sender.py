@@ -6,6 +6,7 @@ Markdown Legacy: *bold*, _italic_, [link](url), `code`
 """
 
 import os
+import time
 import threading
 import requests
 import re
@@ -18,7 +19,7 @@ MAX_MESSAGE_LENGTH = 4000  # De mot khoang dem an toan (Telegram limit = 4096)
 def get_telegram_config() -> dict:
     """Get Telegram bot token and chat ID from env."""
     return {
-        "bot_token": os.getenv("TELEGRAM_BOT_TOKEN", ""),
+        "bot_token": os.getenv("TELEGRAM_BOT_TOKEN", "").strip(),
         "chat_id": os.getenv("TELEGRAM_CHAT_ID", ""),
     }
 
@@ -34,6 +35,10 @@ def convert_markdown_to_legacy(text: str) -> str:
     4. Chuan hoa Bold ve dang *text* SAU khi da xu ly italic
     5. Chuan hoa Lists ve dang `- item`
     """
+    # 0. Xu ly ***bold italic*** TRUOC khi xu ly italic/bold rieng le
+    # ***text*** -> *_text_* (Telegram bold wrapping italic)
+    text = re.sub(r'\*{3}(.+?)\*{3}', r'*_\1_*', text, flags=re.DOTALL)
+
     # 1. Loai bo cac dinh dang khong duoc ho tro
     # Strikethrough: ~~text~~ -> text
     text = re.sub(r'~~(.*?)~~', r'\1', text)
@@ -190,13 +195,14 @@ def _send_to_chats(text: str, chat_ids: list, bot_token: str, parse_mode: str = 
     # Buoc 0: Chuyen @username -> link Twitter truoc khi xu ly markdown
     text = convert_twitter_mentions(text)
 
-    # Chuyen doi markdown sang Markdown Legacy truoc khi gui
+    # Split on raw text first, then convert each chunk independently
+    # This ensures each chunk is a complete, self-contained markdown document
+    # (avoids unclosed bold/italic spans caused by splitting after conversion)
+    raw_chunks = split_message(text)
     if parse_mode == "Markdown":
-        formatted_text = convert_markdown_to_legacy(text)
+        chunks = [convert_markdown_to_legacy(c) for c in raw_chunks]
     else:
-        formatted_text = text
-
-    chunks = split_message(formatted_text)
+        chunks = raw_chunks
     url = f"{TELEGRAM_API}/bot{bot_token}/sendMessage"
 
     # Thread-safe result accumulators
@@ -206,6 +212,8 @@ def _send_to_chats(text: str, chat_ids: list, bot_token: str, parse_mode: str = 
 
     def _send_to_chat(chat_id: str):
         nonlocal total_sent
+        # Mask chat_id for error messages — expose only last 4 chars for security
+        masked_id = f"...{str(chat_id)[-4:]}"
         # Send chunks sequentially within a single chat (preserve message ordering)
         for chunk in chunks:
             payload = {
@@ -220,6 +228,19 @@ def _send_to_chats(text: str, chat_ids: list, bot_token: str, parse_mode: str = 
                     with _lock:
                         total_sent += 1
                 else:
+                    # Handle 429 rate limit: respect retry_after and retry once
+                    if response.status_code == 429:
+                        retry_data = response.json()
+                        retry_after = int(retry_data.get("parameters", {}).get("retry_after", 5))
+                        time.sleep(min(retry_after, 30))  # cap at 30s
+                        retry_response = requests.post(url, json=payload, timeout=10)
+                        if retry_response.status_code == 200:
+                            with _lock:
+                                total_sent += 1
+                            continue  # move to next chunk
+                        # Still failing after retry — fall through with updated response
+                        response = retry_response
+
                     error_data = response.json()
                     error_desc = error_data.get("description", "Unknown error")
 
@@ -234,13 +255,13 @@ def _send_to_chats(text: str, chat_ids: list, bot_token: str, parse_mode: str = 
                         else:
                             retry_error = retry.json().get("description", "Unknown error")
                             with _lock:
-                                errors.append(f"Chat {chat_id}: Markdown & plaintext failed: {retry_error}")
+                                errors.append(f"Chat {masked_id}: Markdown & plaintext failed: {retry_error}")
                     else:
                         with _lock:
-                            errors.append(f"Chat {chat_id} (HTTP {response.status_code}): {error_desc}")
+                            errors.append(f"Chat {masked_id} (HTTP {response.status_code}): {error_desc}")
             except Exception as e:
                 with _lock:
-                    errors.append(f"Chat {chat_id} Exception: {str(e)}")
+                    errors.append(f"Chat {masked_id} Exception: {str(e)}")
 
     # Send to all chats in parallel (up to 5 workers)
     with ThreadPoolExecutor(max_workers=min(5, len(chat_ids))) as executor:

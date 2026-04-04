@@ -8,6 +8,7 @@ import logging
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.events import EVENT_JOB_MISSED
 import pytz
 
 import config_manager
@@ -17,6 +18,15 @@ logger = logging.getLogger(__name__)
 
 TZ_VN = pytz.timezone("Asia/Ho_Chi_Minh")
 scheduler = BackgroundScheduler(timezone=TZ_VN)
+
+_missed_listener_added = False
+
+
+def _on_job_missed(event):
+    logger.warning(
+        f"Scheduled job missed (past grace time): job_id={event.job_id}, "
+        f"scheduled_run_time={event.scheduled_run_time}"
+    )
 
 
 def rebuild_scheduler():
@@ -45,8 +55,13 @@ def rebuild_scheduler():
             except Exception as e:
                 logger.error(f"Failed to schedule {wl['name']} @ {t}: {e}")
 
+    global _missed_listener_added
     if not scheduler.running:
         scheduler.start()
+
+    if not _missed_listener_added:
+        scheduler.add_listener(_on_job_missed, EVENT_JOB_MISSED)
+        _missed_listener_added = True
 
     jobs = [j for j in scheduler.get_jobs() if j.id.startswith("wl_")]
     logger.info(f"Scheduler rebuilt: {len(jobs)} jobs active")

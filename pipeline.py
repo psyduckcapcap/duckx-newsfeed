@@ -244,8 +244,18 @@ def run_fetch_for_watchlist(wl_id: str):
             fetch_detail += f" (errors: {'; '.join(error_details)})"
         logger.info(f"  Fetched {fetch_count} tweets")
 
-        for username, sid in fetch_result["new_since_ids"].items():
-            config_manager.set_since_id(wl_id, username, sid)
+        # Detect if a sync reset happened during this fetch run
+        # If since_ids was non-empty before but is now empty, user reset sync → skip writing back
+        _since_ids_before_fetch = wl.get("since_ids", {})
+        _current_wl = config_manager.get_watchlist_by_id(wl_id)
+        _current_since_ids = _current_wl.get("since_ids", {}) if _current_wl else {}
+        _reset_detected = bool(_since_ids_before_fetch) and not bool(_current_since_ids)
+
+        if not _reset_detected:
+            for username, sid in fetch_result["new_since_ids"].items():
+                config_manager.set_since_id(wl_id, username, sid)
+        else:
+            logger.info(f"  Sync reset detected during fetch — skipping since_id update for '{wl_name}'")
         raw_tweets_text = tweets_to_text(tweets, users_map)
 
         # Persist newly discovered user ID mappings (skips batch lookup on future runs)

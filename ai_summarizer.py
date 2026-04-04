@@ -15,7 +15,8 @@ import os
 from google import genai
 from config_manager import AI_MODELS
 
-GEMINI_MODEL = "gemini-3-flash-preview"
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+MAX_TWEETS_INPUT_CHARS = 100_000  # ~25k tokens; Gemini 3 Flash supports 1M but cost/latency scales
 
 # Cache client instances by API key — tránh tạo lại mỗi request
 _client_cache: dict[str, genai.Client] = {}
@@ -51,6 +52,9 @@ def summarize_with_gemini(tweets_text: str, prompt: str, api_key: str) -> str:
 
     try:
         client = _get_client(api_key)
+
+        if len(tweets_text) > MAX_TWEETS_INPUT_CHARS:
+            tweets_text = tweets_text[:MAX_TWEETS_INPUT_CHARS]
 
         full_prompt = f"{prompt}\n\n--- TWEETS ---\n{tweets_text}"
 
