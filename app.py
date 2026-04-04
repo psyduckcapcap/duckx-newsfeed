@@ -16,6 +16,7 @@ import argparse
 import threading
 
 from flask import Flask
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 import config_manager
@@ -32,6 +33,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
+# Restrict CORS to localhost origins only (app runs locally by default)
+CORS(app, origins=["http://localhost:*", "http://127.0.0.1:*"], supports_credentials=False)
 app.register_blueprint(bp)
 
 

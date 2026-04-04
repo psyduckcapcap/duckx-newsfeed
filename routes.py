@@ -6,6 +6,7 @@ All REST API endpoints and web UI route.
 
 import os
 import threading
+from functools import wraps
 
 from flask import Blueprint, render_template, request, jsonify
 
@@ -15,6 +16,28 @@ from scheduler_manager import scheduler, rebuild_scheduler
 from telegram_sender import test_connection
 
 bp = Blueprint("main", __name__)
+
+import threading as _threading
+_run_all_lock = _threading.Lock()
+_run_all_running = False
+
+
+@bp.before_request
+def check_api_auth():
+    """Optional token auth for /api/* routes. Only enforces if ADMIN_TOKEN env var is set."""
+    if not request.path.startswith("/api/"):
+        return None
+    admin_token = os.getenv("ADMIN_TOKEN", "").strip()
+    if not admin_token:
+        # No token configured → local-only mode, allow all access
+        return None
+    # Accept Authorization: Bearer <token> or X-Admin-Token header
+    auth_header = request.headers.get("Authorization", "")
+    token_header = request.headers.get("X-Admin-Token", "")
+    provided = token_header or (auth_header[7:].strip() if auth_header.startswith("Bearer ") else "")
+    if provided != admin_token:
+        return jsonify({"error": "Unauthorized"}), 401
+    return None
 
 
 @bp.route("/")
@@ -83,10 +106,10 @@ def api_retry_execution(exec_id):
 @bp.route("/api/execution-log/bulk-delete", methods=["POST"])
 def api_bulk_delete_execution_logs():
     data = request.get_json() or {}
-    indices = data.get("indices", [])
-    if indices:
-        config_manager.delete_multiple_execution_logs(indices)
-    return jsonify({"success": True, "message": f"Da xoa {len(indices)} ban ghi"})
+    exec_ids = data.get("exec_ids", [])
+    if exec_ids:
+        config_manager.delete_execution_logs_by_ids(exec_ids)
+    return jsonify({"success": True, "message": f"Da xoa {len(exec_ids)} ban ghi"})
 
 
 @bp.route("/api/reset-sync", methods=["POST"])
@@ -176,9 +199,24 @@ def api_run_now():
     wl_id = data.get("wl_id")
     if wl_id:
         thread = threading.Thread(target=run_fetch_for_watchlist, args=[wl_id], daemon=False)
+        thread.start()
     else:
-        thread = threading.Thread(target=run_all_watchlists, daemon=False)
-    thread.start()
+        global _run_all_running
+        with _run_all_lock:
+            if _run_all_running:
+                return jsonify({"success": False, "message": "Run All dang chay, vui long cho..."}), 409
+            _run_all_running = True
+
+        def _run_all_guarded():
+            global _run_all_running
+            try:
+                run_all_watchlists()
+            finally:
+                with _run_all_lock:
+                    _run_all_running = False
+
+        thread = threading.Thread(target=_run_all_guarded, daemon=False)
+        thread.start()
     return jsonify({"success": True, "message": "Dang chay..."})
 
 
