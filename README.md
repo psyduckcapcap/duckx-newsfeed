@@ -54,7 +54,23 @@ copy config.example.env .env
 
 Mở `.env` và điền đầy đủ các API keys (xem hướng dẫn trong file).
 
-**4. Chạy ứng dụng**
+**4. Cấu hình Watchlists (tùy chọn)**
+
+Lần đầu chạy, ứng dụng tự động copy `app_config.sample.json` → `app_config.json` với 3 watchlist mẫu sẵn (Crypto, Oil & Geopolitics, AI Tech). Bạn có thể chỉnh sửa trực tiếp qua Web UI.
+
+Nếu muốn tự setup từ đầu (không dùng mẫu):
+
+```bash
+# Linux / Mac
+cp app_config.sample.json app_config.json
+
+# Windows
+copy app_config.sample.json app_config.json
+```
+
+> Sau đó vào Web UI → **Settings** để thêm Telegram Chat IDs và điều chỉnh watchlists theo nhu cầu.
+
+**5. Chạy ứng dụng**
 
 ```bash
 python app.py
@@ -145,11 +161,12 @@ duckx-newsfeed/
 │   └── index.html            # Web UI (vanilla JS) (~724 LOC)
 ├── static/
 │   └── style.css             # Dark theme CSS (~798 LOC)
-├── tests/                    # Test directory (NEW)
-├── app_config.json           # Watchlist config (runtime)
-├── execution_log.json        # Execution history (runtime)
-├── telegram_targets.json     # Cached Telegram targets (runtime)
-├── config.example.env        # Mẫu cấu hình
+├── tests/                    # Test directory
+├── app_config.sample.json    # Mẫu watchlists (copy → app_config.json khi lần đầu chạy)
+├── app_config.json           # Watchlist config (runtime, không commit vào git)
+├── execution_log.json        # Execution history (runtime, không commit vào git)
+├── telegram_targets.json     # Cached Telegram targets (runtime, không commit vào git)
+├── config.example.env        # Mẫu cấu hình API keys
 ├── start.sh                  # macOS daemon management
 └── requirements.txt          # Dependencies
 ```
@@ -173,6 +190,7 @@ python main.py --user elonmusk     # Lấy tweets của @elonmusk
 | Thư viện | Mục đích |
 |---|---|
 | `flask` | Web server |
+| `flask-cors` | CORS policy (localhost-only) |
 | `apscheduler` | Tự động chạy theo lịch |
 | `google-genai` | Gemini AI API |
 | `requests` + `requests-oauthlib` | X API, Telegram API |

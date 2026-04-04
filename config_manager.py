@@ -9,6 +9,8 @@ import copy
 import json
 import logging
 import os
+import re
+import tempfile
 import uuid
 import threading
 from datetime import datetime
@@ -16,9 +18,11 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app_config.json")
-LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "execution_log.json")
-TELEGRAM_TARGETS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "telegram_targets.json")
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_FILE = os.path.join(_BASE_DIR, "app_config.json")
+CONFIG_SAMPLE_FILE = os.path.join(_BASE_DIR, "app_config.sample.json")
+LOG_FILE = os.path.join(_BASE_DIR, "execution_log.json")
+TELEGRAM_TARGETS_FILE = os.path.join(_BASE_DIR, "telegram_targets.json")
 
 DEFAULT_AI_PROMPT = (
     "Bạn là chuyên gia phân tích tin tức tài chính và công nghệ. Tóm tắt các tweet dưới đây về Thị trường Crypto & Công nghệ Blockchain bằng tiếng Việt.\n\nXỬ LÝ NỘI DUNG:\n1. Chỉ giữ thông tin có giá trị tin tức thực sự: giá/khối lượng giao dịch, on-chain data, regulatory news, protocol update, phát biểu của KOL có ảnh hưởng thị trường.\n2. Gộp các tweet cùng chủ đề thành một ý duy nhất, không lặp thông tin.\n3. Loại bỏ hoàn toàn: quảng cáo/shill coin, lời cảm ơn, hashtag, link, nhận định chung chung không có số liệu.\n4. Đổi múi giờ sang UTC+7 khi đề cập thời gian cụ thể.\n5. Nếu không có nội dung đáng chú ý: chỉ viết \"Không có tin đáng chú ý.\"\n\nĐỊNH DẠNG ĐẦU RA:\n- Breaking news đặt đầu tiên, đánh dấu 🚀 **BREAKING NEWS** (nếu có).\n- Mỗi ý bắt đầu bằng từ khóa chủ đề IN HOA hoặc **in đậm**, kèm emoji phù hợp.\n- Dùng **in đậm** để làm nổi bật tên coin, tổ chức, con số quan trọng.\n- Dẫn nguồn inline ngay sau thông tin: @account.\n- TUYỆT ĐỐI KHÔNG dùng: table, heading (#/##/###)."
@@ -48,8 +52,18 @@ AI_MODELS = {
 
 def load_config() -> dict:
     if not os.path.exists(CONFIG_FILE):
-        save_config(DEFAULT_CONFIG)
-        return DEFAULT_CONFIG.copy()
+        # Bootstrap from sample config if available (gives new users example watchlists)
+        if os.path.exists(CONFIG_SAMPLE_FILE):
+            try:
+                import shutil
+                shutil.copy2(CONFIG_SAMPLE_FILE, CONFIG_FILE)
+                logger.info("Created app_config.json from app_config.sample.json")
+            except Exception as e:
+                logger.warning(f"Could not copy sample config: {e}")
+                save_config(DEFAULT_CONFIG)
+        else:
+            save_config(DEFAULT_CONFIG)
+        return load_config()
     try:
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             config = json.load(f)
@@ -62,12 +76,23 @@ def load_config() -> dict:
         return DEFAULT_CONFIG.copy()
 
 
+def _atomic_write_json(filepath: str, data) -> None:
+    """Write JSON atomically via temp file + os.replace to prevent corrupt-on-crash."""
+    tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(filepath)), suffix=".tmp")
+    try:
+        with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, filepath)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
+
+
 def save_config(config: dict):
     # Remove legacy keys if they exist in config (migration cleanup)
     config.pop("execution_log", None)
     config.pop("telegram_targets_cache", None)
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(config, f, indent=2, ensure_ascii=False)
+    _atomic_write_json(CONFIG_FILE, config)
 
 
 # ─────────────────────────────────────────────
@@ -86,8 +111,7 @@ def _load_log() -> list:
 
 
 def _save_log(log: list):
-    with open(LOG_FILE, "w", encoding="utf-8") as f:
-        json.dump(log, f, indent=2, ensure_ascii=False)
+    _atomic_write_json(LOG_FILE, log)
 
 
 def _migrate_log_from_config():
@@ -129,8 +153,7 @@ def _migrate_log_from_config():
             _save_log(migrated)
             # Remove from config
             config.pop("execution_log", None)
-            with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-                json.dump(config, f, indent=2, ensure_ascii=False)
+            _atomic_write_json(CONFIG_FILE, config)
     except Exception as e:
         logger.warning(f"Log migration failed (non-critical): {e}")
 
@@ -186,7 +209,12 @@ def update_watchlist(wl_id: str, updates: dict) -> bool:
             if wl["id"] == wl_id:
                 for key, expected_type in allowed_fields.items():
                     if key in updates and isinstance(updates[key], expected_type):
-                        wl[key] = updates[key]
+                        v = updates[key]
+                        if key == "schedule_times":
+                            for t in v:
+                                if not isinstance(t, str) or not re.match(r'^([01]\d|2[0-3]):[0-5]\d$', t):
+                                    return False  # Invalid HH:MM format
+                        wl[key] = v
                 save_config(config)
                 return True
     return False
@@ -300,8 +328,7 @@ def update_telegram_targets_cache():
 
     if not target_ids:
         with _io_lock:
-            with open(TELEGRAM_TARGETS_FILE, "w", encoding="utf-8") as f:
-                json.dump([], f, indent=2, ensure_ascii=False)
+            _atomic_write_json(TELEGRAM_TARGETS_FILE, [])
         return
 
     names_map = get_chat_names(target_ids)
@@ -320,8 +347,7 @@ def update_telegram_targets_cache():
         cached_targets.append({"id": cid, "name": name})
 
     with _io_lock:
-        with open(TELEGRAM_TARGETS_FILE, "w", encoding="utf-8") as f:
-            json.dump(cached_targets, f, indent=2, ensure_ascii=False)
+        _atomic_write_json(TELEGRAM_TARGETS_FILE, cached_targets)
 
 def get_cached_telegram_targets() -> list:
     """Tra ve list cac Telegram targets tu file telegram_targets.json."""
@@ -387,13 +413,15 @@ def record_execution(
 
 
 _migrated = False
+_migrated_lock = threading.Lock()
 
 def get_execution_log() -> list:
     """Get execution log (runs migration on first call if needed)."""
     global _migrated
-    if not _migrated:
-        _migrate_log_from_config()
-        _migrated = True
+    with _migrated_lock:
+        if not _migrated:
+            _migrate_log_from_config()
+            _migrated = True
     return _load_log()
 
 
@@ -417,6 +445,16 @@ def delete_multiple_execution_logs(indices: list):
             log.pop(i)
         _save_log(log)
 
+
+def delete_execution_logs_by_ids(exec_ids: list):
+    """Xoa nhieu log theo exec_id (chong TOCTOU race khi log thay doi giua cac request)."""
+    with _io_lock:
+        if not exec_ids:
+            return
+        ids_to_delete = set(exec_ids)
+        log = _load_log()
+        log = [entry for entry in log if entry.get("id") not in ids_to_delete]
+        _save_log(log)
 
 
 # ─────────────────────────────────────────────

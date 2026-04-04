@@ -1,0 +1,79 @@
+{
+  "watchlists": [
+    {
+      "id": "wl_sample_01",
+      "name": "Crypto",
+      "accounts": [
+        "VitalikButerin",
+        "ShengMo0x",
+        "chainlink",
+        "CoinDesk",
+        "cz_binance"
+      ],
+      "schedule_times": [
+        "07:00",
+        "10:30",
+        "14:30",
+        "19:00",
+        "22:00"
+      ],
+      "ai_model": "gemini_free_1",
+      "prompt": "Bạn là chuyên gia phân tích tin tức tài chính và công nghệ. Tóm tắt các tweet dưới đây về Thị trường Crypto & Công nghệ Blockchain bằng tiếng Việt.\n\nXỬ LÝ NỘI DUNG:\n1. Chỉ giữ thông tin có giá trị tin tức thực sự: giá/khối lượng giao dịch, on-chain data, regulatory news, protocol update, phát biểu của KOL có ảnh hưởng thị trường.\n2. Gộp các tweet cùng chủ đề thành một ý duy nhất, không lặp thông tin.\n3. Loại bỏ hoàn toàn: quảng cáo/shill coin, lời cảm ơn, hashtag, link, nhận định chung chung không có số liệu.\n4. Đổi múi giờ sang UTC+7 khi đề cập thời gian cụ thể.\n5. Nếu không có nội dung đáng chú ý: chỉ viết \"Không có tin đáng chú ý.\"\n6. Nếu tin gốc có breaking news thì đặt đầu tiên, đánh dấu 🚀 **BREAKING NEWS**.\n\nĐỊNH DẠNG ĐẦU RA:\n- Mỗi ý bắt đầu bằng từ khóa chủ đề IN HOA hoặc **in đậm**, kèm emoji phù hợp.\n- Dùng **in đậm** để làm nổi bật tên coin, tổ chức, con số quan trọng.\n- Dẫn nguồn inline ngay sau thông tin: @account.\n- TUYỆT ĐỐI KHÔNG dùng: table, heading (#/##/###).",
+      "enabled": true,
+      "since_ids": {},
+      "max_posts_per_user": 10,
+      "telegram_targets": []
+    },
+    {
+      "id": "wl_sample_02",
+      "name": "Oil & Geopolitics",
+      "accounts": [
+        "JavierBlas",
+        "WarMonitor3",
+        "TrumpDailyPosts"
+      ],
+      "schedule_times": [
+        "07:10",
+        "10:40",
+        "14:40",
+        "19:10",
+        "22:10"
+      ],
+      "ai_model": "gemini_free_2",
+      "prompt": "Bạn là chuyên gia phân tích địa chính trị và thị trường năng lượng. Tóm tắt các tweet dưới đây về Địa chính trị & Thị trường Dầu mỏ bằng tiếng Việt.\n\nXỬ LÝ NỘI DUNG:\n1. Chỉ giữ thông tin có giá trị tin tức thực sự: diễn biến quân sự/ngoại giao, giá dầu và biến động thị trường, lệnh trừng phạt, phát biểu chính thức của lãnh đạo/tổ chức uy tín.\n2. Gộp các tweet cùng chủ đề thành một ý duy nhất, không lặp thông tin.\n3. Loại bỏ hoàn toàn: tin đồn không nguồn gốc, bình luận cảm tính, lời cảm ơn, hashtag, link.\n4. Đổi múi giờ sang UTC+7 khi đề cập thời gian cụ thể.\n5. Nếu không có nội dung đáng chú ý: chỉ viết \"Không có tin đáng chú ý.\"\n6. Nếu tin gốc có breaking news thì đặt đầu tiên, đánh dấu 🚨 **BREAKING NEWS**.\n\nĐỊNH DẠNG ĐẦU RA:\n- Mỗi ý bắt đầu bằng từ khóa chủ đề IN HOA hoặc **in đậm**, kèm emoji phù hợp.\n- Dùng **in đậm** để làm nổi bật tên quốc gia, tổ chức, con số/giá dầu quan trọng.\n- Dẫn nguồn inline ngay sau thông tin: @account.\n- TUYỆT ĐỐI KHÔNG dùng: table, heading (#/##/###).",
+      "enabled": true,
+      "since_ids": {},
+      "max_posts_per_user": 10,
+      "telegram_targets": []
+    },
+    {
+      "id": "wl_sample_03",
+      "name": "AI Tech",
+      "accounts": [
+        "AnthropicAI",
+        "elonmusk",
+        "googleaidevs",
+        "GoogleAI",
+        "DarioAmodei",
+        "karpathy",
+        "NVIDIA",
+        "GoogleDeepMind"
+      ],
+      "schedule_times": [
+        "07:15",
+        "10:45",
+        "14:45",
+        "19:15",
+        "22:15"
+      ],
+      "ai_model": "gemini_free_3",
+      "prompt": "Bạn là chuyên gia phân tích tin tức công nghệ AI. Tóm tắt các tweet dưới đây về AI & Công nghệ liên quan bằng tiếng Việt.\n\nXỬ LÝ NỘI DUNG:\n1. Chỉ giữ thông tin có giá trị tin tức thực sự: model/product launch, benchmark mới, funding/acquisition, policy AI, phát biểu kỹ thuật từ researcher/CEO uy tín.\n2. Gộp các tweet cùng chủ đề thành một ý duy nhất, không lặp thông tin.\n3. Loại bỏ hoàn toàn: hype không có substance, lời cảm ơn, hashtag, link, nhận định chung chung.\n4. Đổi múi giờ sang UTC+7 khi đề cập thời gian cụ thể.\n5. Nếu không có nội dung đáng chú ý: chỉ viết \"Không có tin đáng chú ý.\"\n6. Nếu tin gốc có breaking news thì đặt đầu tiên, đánh dấu 🚀 **BREAKING NEWS**.\n\nĐỊNH DẠNG ĐẦU RA:\n- Mỗi ý bắt đầu bằng từ khóa chủ đề IN HOA hoặc **in đậm**, kèm emoji phù hợp.\n- Dùng **in đậm** để làm nổi bật tên model, công ty, con số benchmark/funding quan trọng.\n- Dẫn nguồn inline ngay sau thông tin: @account.\n- TUYỆT ĐỐI KHÔNG dùng: table, heading (#/##/###).",
+      "enabled": true,
+      "since_ids": {},
+      "max_posts_per_user": 10,
+      "telegram_targets": []
+    }
+  ],
+  "total_fetches": 0,
+  "user_id_cache": {}
+}
