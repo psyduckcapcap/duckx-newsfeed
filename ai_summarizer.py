@@ -15,7 +15,7 @@ import os
 from google import genai
 from config_manager import AI_MODELS
 
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemma-4-31b-it")
 MAX_TWEETS_INPUT_CHARS = 100_000  # ~25k tokens; Gemini 3 Flash supports 1M but cost/latency scales
 
 # Cache client instances by API key — tránh tạo lại mỗi request
